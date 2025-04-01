@@ -15,11 +15,6 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import CookiePolicy from "./pages/CookiePolicy";
 import NotFound from "./pages/NotFound";
-import AboutUs from "./pages/AboutUs";
-import FeaturesPage from "./pages/FeaturesPage";
-import HelpCenter from "./pages/HelpCenter";
-import Tutorials from "./pages/Tutorials";
-import Community from "./pages/Community";
 import { Helmet } from "react-helmet";
 
 const queryClient = new QueryClient();
@@ -63,11 +58,6 @@ const App = () => (
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/cookie-policy" element={<CookiePolicy />} />
-              <Route path="/about-us" element={<AboutUs />} />
-              <Route path="/features" element={<FeaturesPage />} />
-              <Route path="/help-center" element={<HelpCenter />} />
-              <Route path="/tutorials" element={<Tutorials />} />
-              <Route path="/community" element={<Community />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

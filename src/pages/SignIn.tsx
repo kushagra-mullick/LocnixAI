@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/context/AuthContext';
@@ -19,15 +20,9 @@ const formSchema = z.object({
 const SignIn = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, navigate]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -40,10 +35,28 @@ const SignIn = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      await login(values.email, values.password);
-      // Redirect happens automatically in the useEffect hook when isAuthenticated changes
+      // In a real app, this would use the Supabase authentication
+      // For now, we'll simulate a successful login
+      console.log("Sign in with:", values);
+      
+      // Simulate successful login with a delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Use the login function from AuthContext
+      login({ email: values.email });
+      
+      toast({
+        title: "Success!",
+        description: "You've successfully signed in.",
+      });
+      
+      navigate('/dashboard');
     } catch (error) {
-      // Error is already handled in the login function
+      toast({
+        variant: "destructive",
+        title: "Sign in failed",
+        description: "Please check your credentials and try again.",
+      });
     } finally {
       setIsLoading(false);
     }

@@ -9,66 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      flashcards: {
-        Row: {
-          back: string
-          category: string | null
-          created_at: string | null
-          date_created: string | null
-          difficulty: string | null
-          front: string
-          id: string
-          last_reviewed: string | null
-          next_review_date: string | null
-          user_id: string
-        }
-        Insert: {
-          back: string
-          category?: string | null
-          created_at?: string | null
-          date_created?: string | null
-          difficulty?: string | null
-          front: string
-          id?: string
-          last_reviewed?: string | null
-          next_review_date?: string | null
-          user_id: string
-        }
-        Update: {
-          back?: string
-          category?: string | null
-          created_at?: string | null
-          date_created?: string | null
-          difficulty?: string | null
-          front?: string
-          id?: string
-          last_reviewed?: string | null
-          next_review_date?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          id: string
-          name: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email?: string | null
-          id: string
-          name?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          name?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
