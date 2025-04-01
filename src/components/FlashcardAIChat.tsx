@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -291,6 +290,11 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         `Card ${i+1}: Front: "${card.front}" Back: "${card.back}" Category: ${card.category || 'Uncategorized'}`
       ).join('\n');
       
+      const systemMessage = {
+        role: 'system',
+        content: `You are an AI assistant specialized in helping users learn with flashcards. Here are some of the user's flashcards for context:\n\n${flashcardContext}\n\nThe user has a total of ${flashcards.length} flashcards.`
+        }
+      
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + apiKey, {
         method: 'POST',
         headers: {
@@ -339,146 +343,34 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
   };
 
   return (
-    <Card className="glass-card w-full max-w-4xl mx-auto flex flex-col h-[70vh]">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            <CardTitle>Flashcard AI Chat Assistant</CardTitle>
-          </div>
-          <div className="flex gap-2">
-            <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
-                  API Settings
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>AI Model Settings</DialogTitle>
-                  <DialogDescription>
-                    Configure which AI service and model to use for the chat assistant.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="ai-service">AI Service</Label>
-                    <Select 
-                      value={selectedModel} 
-                      onValueChange={(value: any) => setSelectedModel(value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select AI service" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="openai">OpenAI</SelectItem>
-                        <SelectItem value="anthropic">Anthropic Claude</SelectItem>
-                        <SelectItem value="perplexity">Perplexity</SelectItem>
-                        <SelectItem value="gemini">Google Gemini</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {selectedModel === 'openai' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="openai-model">OpenAI Model</Label>
-                      <Select 
-                        value={apiModel} 
-                        onValueChange={setApiModel}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-                          <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                          <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  
-                  {selectedModel === 'anthropic' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="anthropic-model">Anthropic Model</Label>
-                      <Select 
-                        value={apiModel} 
-                        onValueChange={setApiModel}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="claude-3-haiku-20240307">Claude 3 Haiku</SelectItem>
-                          <SelectItem value="claude-3-sonnet-20240229">Claude 3 Sonnet</SelectItem>
-                          <SelectItem value="claude-3-opus-20240229">Claude 3 Opus</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  
-                  {selectedModel === 'perplexity' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="perplexity-model">Perplexity Model</Label>
-                      <Select 
-                        value={apiModel} 
-                        onValueChange={setApiModel}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="llama-3.1-sonar-small-128k-online">Llama 3.1 Sonar (Small)</SelectItem>
-                          <SelectItem value="llama-3.1-sonar-large-128k-online">Llama 3.1 Sonar (Large)</SelectItem>
-                          <SelectItem value="llama-3.1-sonar-huge-128k-online">Llama 3.1 Sonar (Huge)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="api-key">API Key</Label>
-                    <Input
-                      id="api-key"
-                      type="password"
-                      placeholder="Enter your API key"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                    />
-                    <p className="text-xs text-gray-500">
-                      {apiKey ? "API key provided - will use the selected AI service" : "Without an API key, we'll use simulation mode"}
-                    </p>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setIsApiDialogOpen(false)}>
-                    Save Settings
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            
-            {onClose && (
-              <Button variant="outline" size="sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+    <div className="w-full h-full flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-2">
+          <Brain className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold">Flashcard AI Chat Assistant</h2>
         </div>
-        <CardDescription>
-          Ask me anything about your flashcards or how to improve your learning
-        </CardDescription>
-      </CardHeader>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setIsApiDialogOpen(true)}>
+            <Settings className="h-4 w-4 mr-2" />
+            API Settings
+          </Button>
+          
+          {onClose && (
+            <Button variant="outline" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
       
-      <CardContent className="flex-grow overflow-auto pb-0">
-        <div className="space-y-4">
+      <div className="flex-grow overflow-auto p-4 bg-slate-50 dark:bg-slate-900/50 min-h-0">
+        <div className="space-y-4 max-w-3xl mx-auto">
           {messages.filter(msg => msg.role !== 'system').map((message, index) => (
             <div
               key={index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`flex items-start max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-2`}>
+              <div className={`flex items-start max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-2`}>
                 <div className={`p-2 rounded-full ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   {message.role === 'user' ? (
                     <User className="h-4 w-4" />
@@ -486,8 +378,8 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
                     <Bot className="h-4 w-4" />
                   )}
                 </div>
-                <div className={`py-2 px-4 rounded-lg ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                <div className={`py-2 px-4 rounded-lg ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-white dark:bg-slate-800 shadow-sm'}`}>
+                  <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                 </div>
               </div>
             </div>
@@ -498,7 +390,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
                 <div className="p-2 rounded-full bg-muted">
                   <Bot className="h-4 w-4" />
                 </div>
-                <div className="py-2 px-4 rounded-lg bg-muted min-w-[60px] flex items-center">
+                <div className="py-2 px-4 rounded-lg bg-white dark:bg-slate-800 shadow-sm min-w-[60px] flex items-center">
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
               </div>
@@ -506,21 +398,22 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
           )}
           <div ref={messagesEndRef} />
         </div>
-      </CardContent>
+      </div>
       
-      <CardFooter className="pt-4">
-        <div className="flex w-full items-center space-x-2">
+      <div className="p-4 border-t bg-background">
+        <div className="flex w-full items-center space-x-2 max-w-3xl mx-auto">
           <Textarea
             placeholder="Ask about your flashcards..."
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-grow min-h-[60px] max-h-[120px]"
+            className="flex-grow min-h-[50px] max-h-[100px] resize-none"
           />
           <Button 
             onClick={handleSendMessage} 
             disabled={isLoading || !inputMessage.trim()}
             className="shrink-0"
+            size="icon"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -529,8 +422,115 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
             )}
           </Button>
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+      
+      {/* API Settings Dialog */}
+      <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>AI Model Settings</DialogTitle>
+            <DialogDescription>
+              Configure which AI service and model to use for the chat assistant.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="ai-service">AI Service</Label>
+              <Select 
+                value={selectedModel} 
+                onValueChange={(value: any) => setSelectedModel(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select AI service" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+                  <SelectItem value="perplexity">Perplexity</SelectItem>
+                  <SelectItem value="gemini">Google Gemini</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedModel === 'openai' && (
+              <div className="space-y-2">
+                <Label htmlFor="openai-model">OpenAI Model</Label>
+                <Select 
+                  value={apiModel} 
+                  onValueChange={setApiModel}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                    <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {selectedModel === 'anthropic' && (
+              <div className="space-y-2">
+                <Label htmlFor="anthropic-model">Anthropic Model</Label>
+                <Select 
+                  value={apiModel} 
+                  onValueChange={setApiModel}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="claude-3-haiku-20240307">Claude 3 Haiku</SelectItem>
+                    <SelectItem value="claude-3-sonnet-20240229">Claude 3 Sonnet</SelectItem>
+                    <SelectItem value="claude-3-opus-20240229">Claude 3 Opus</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {selectedModel === 'perplexity' && (
+              <div className="space-y-2">
+                <Label htmlFor="perplexity-model">Perplexity Model</Label>
+                <Select 
+                  value={apiModel} 
+                  onValueChange={setApiModel}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="llama-3.1-sonar-small-128k-online">Llama 3.1 Sonar (Small)</SelectItem>
+                    <SelectItem value="llama-3.1-sonar-large-128k-online">Llama 3.1 Sonar (Large)</SelectItem>
+                    <SelectItem value="llama-3.1-sonar-huge-128k-online">Llama 3.1 Sonar (Huge)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="api-key">API Key</Label>
+              <Input
+                id="api-key"
+                type="password"
+                placeholder="Enter your API key"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              <p className="text-xs text-gray-500">
+                {apiKey ? "API key provided - will use the selected AI service" : "Without an API key, we'll use simulation mode"}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsApiDialogOpen(false)}>
+              Save Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

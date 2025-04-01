@@ -555,16 +555,8 @@ const Dashboard = () => {
       
       {/* AI Chat Dialog */}
       <Dialog open={showAIChat} onOpenChange={setShowAIChat}>
-        <DialogContent className="sm:max-w-5xl h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Flashcard AI Chat Assistant</DialogTitle>
-            <DialogDescription>
-              Chat with AI about your flashcards and get learning assistance.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 h-full">
-            <FlashcardAIChat onClose={() => setShowAIChat(false)} />
-          </div>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] p-0 overflow-hidden">
+          <FlashcardAIChat onClose={() => setShowAIChat(false)} />
         </DialogContent>
       </Dialog>
     </div>

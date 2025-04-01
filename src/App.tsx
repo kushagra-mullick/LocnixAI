@@ -44,43 +44,41 @@ const queryClient = new QueryClient();
 
 const App = () => {
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <FlashcardProvider>
-              {/* Add Helmet for dynamic metadata and structured data */}
-              <Helmet>
-                <script type="application/ld+json">
-                  {JSON.stringify(structuredData)}
-                </script>
-              </Helmet>
-              
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/study" element={<Study />} />
-                <Route path="/signin" element={<SignIn />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/cookie-policy" element={<CookiePolicy />} />
-                <Route path="/about-us" element={<AboutUs />} />
-                <Route path="/features" element={<FeaturesPage />} />
-                <Route path="/help-center" element={<HelpCenter />} />
-                <Route path="/tutorials" element={<Tutorials />} />
-                <Route path="/community" element={<Community />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              
-              <Toaster />
-              <Sonner />
-            </FlashcardProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <FlashcardProvider>
+            {/* Add Helmet for dynamic metadata and structured data */}
+            <Helmet>
+              <script type="application/ld+json">
+                {JSON.stringify(structuredData)}
+              </script>
+            </Helmet>
+            
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/study" element={<Study />} />
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/cookie-policy" element={<CookiePolicy />} />
+              <Route path="/about-us" element={<AboutUs />} />
+              <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/help-center" element={<HelpCenter />} />
+              <Route path="/tutorials" element={<Tutorials />} />
+              <Route path="/community" element={<Community />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            
+            <Toaster />
+            <Sonner />
+          </FlashcardProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 };
 
