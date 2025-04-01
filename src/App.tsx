@@ -20,6 +20,7 @@ import FeaturesPage from "./pages/FeaturesPage";
 import HelpCenter from "./pages/HelpCenter";
 import Tutorials from "./pages/Tutorials";
 import Community from "./pages/Community";
+import AIChat from "./pages/AIChat";
 import { Helmet } from "react-helmet";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/help-center" element={<HelpCenter />} />
               <Route path="/tutorials" element={<Tutorials />} />
               <Route path="/community" element={<Community />} />
+              <Route path="/ai-chat" element={<AIChat />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
