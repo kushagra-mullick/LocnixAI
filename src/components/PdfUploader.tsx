@@ -2,21 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, FileText, X, Check, Brain } from 'lucide-react';
+import { Loader2, FileText, X, Check } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Flashcard } from '@/context/FlashcardContext';
-import { supabase } from '@/integrations/supabase/client';
 
-// Set worker path to a CDN that matches our pdfjs version
-const PDFJS_VERSION = pdfjsLib.version;
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
-
-// Add a type declaration for our custom window property
-declare global {
-  interface Window {
-    pdfjsWorkerLoaded?: boolean;
-  }
-}
+// Set worker path
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface PdfUploaderProps {
   onExtractComplete: (flashcards: Omit<Flashcard, 'id' | 'dateCreated' | 'lastReviewed' | 'nextReviewDate'>[]) => void;
@@ -31,37 +22,10 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
-  const [processingMethod, setProcessingMethod] = useState<'standard' | 'ai'>('standard');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Preload the PDF worker when component mounts
-    const preloadWorker = async () => {
-      try {
-        // Check if worker is already loaded
-        if (!window.pdfjsWorkerLoaded) {
-          // Try to dynamically load the worker script
-          const script = document.createElement('script');
-          script.src = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
-          script.async = true;
-          script.onload = () => {
-            window.pdfjsWorkerLoaded = true;
-            console.log('PDF.js worker loaded successfully');
-          };
-          script.onerror = (error) => {
-            console.error('Failed to load PDF.js worker from CDN:', error);
-            // Let the PDF.js library handle the fallback
-          };
-          document.head.appendChild(script);
-        }
-      } catch (err) {
-        console.error('Error preloading PDF worker:', err);
-      }
-    };
-    
-    preloadWorker();
-    
     return () => {
       // Clean up the URL when component unmounts
       if (previewUrl) {
@@ -117,56 +81,40 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setProgress(0);
     
     try {
-      // Create a buffer from the file
       const arrayBuffer = await pdfFile.arrayBuffer();
-      
-      // Load the PDF document with more robust error handling
-      let pdf;
-      try {
-        pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      } catch (error) {
-        console.error('Error loading PDF document:', error);
-        throw new Error('Failed to load PDF document. The file might be corrupted or password-protected.');
-      }
-      
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const totalPages = pdf.numPages;
       let fullText = '';
       let potentialFlashcardContent: string[] = [];
       
       for (let i = 1; i <= totalPages; i++) {
-        try {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        
+        let pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        
+        fullText += pageText + '\n\n';
+        
+        // Split the text into paragraphs and filter for useful content
+        const paragraphs = pageText.split(/\n{2,}/)
+          .filter(para => para.trim().length > 0);
+        
+        // Process each paragraph to identify useful content
+        paragraphs.forEach(paragraph => {
+          // Split into sentences
+          const sentences = paragraph.split(/(?<=[.!?])\s+/)
+            .filter(sentence => sentence.trim().length > 0);
           
-          let pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(' ');
-          
-          fullText += pageText + '\n\n';
-          
-          // Split the text into paragraphs and filter for useful content
-          const paragraphs = pageText.split(/\n{2,}/)
-            .filter(para => para.trim().length > 0);
-          
-          // Process each paragraph to identify useful content
-          paragraphs.forEach(paragraph => {
-            // Split into sentences
-            const sentences = paragraph.split(/(?<=[.!?])\s+/)
-              .filter(sentence => sentence.trim().length > 0);
-            
-            sentences.forEach(sentence => {
-              if (isUsefulContent(sentence)) {
-                potentialFlashcardContent.push(sentence.trim());
-              }
-            });
+          sentences.forEach(sentence => {
+            if (isUsefulContent(sentence)) {
+              potentialFlashcardContent.push(sentence.trim());
+            }
           });
-          
-          setProgress(Math.round((i / totalPages) * 100));
-        } catch (pageError) {
-          console.error(`Error extracting text from page ${i}:`, pageError);
-          // Continue to next page instead of failing the whole process
-          continue;
-        }
+        });
+        
+        setProgress(Math.round((i / totalPages) * 100));
       }
       
       // Remove duplicates and very similar content
@@ -185,7 +133,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
       console.error('Error extracting text from PDF:', error);
       toast({
         title: "PDF extraction failed",
-        description: error instanceof Error ? error.message : "There was an error extracting text from the PDF.",
+        description: "There was an error extracting text from the PDF.",
         variant: "destructive"
       });
     } finally {
@@ -210,34 +158,42 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setIsProcessing(true);
     
     try {
-      let generatedFlashcards;
-      
-      if (processingMethod === 'ai') {
-        // Use AI to generate better flashcards
-        try {
-          const { data, error } = await supabase.functions.invoke('pdf-flashcard-generator', {
-            body: { 
-              pdfContent: usefulContent.slice(0, Math.min(usefulContent.length, 30))
-            },
-          });
+      // Generate flashcards from the useful content
+      const generatedFlashcards = usefulContent
+        .slice(0, Math.min(usefulContent.length, 20)) // Limit to 20 flashcards max
+        .map((content) => {
+          // For each content piece, create a question-answer pair
           
-          if (error) throw error;
+          // Method 1: For definition-like content, use "What is X?" format
+          const definitionMatch = content.match(/([^.,:;]+)(?:is|are|refers to|means|defined as)([^.]*\.)/i);
           
-          generatedFlashcards = data.flashcards;
-        } catch (aiError) {
-          console.error('Error using AI for flashcards:', aiError);
-          toast({
-            title: "AI Processing Failed",
-            description: "Falling back to standard processing method.",
-            variant: "destructive"
-          });
-          // Fallback to standard method
-          generatedFlashcards = processWithStandardMethod();
-        }
-      } else {
-        // Standard method (without AI)
-        generatedFlashcards = processWithStandardMethod();
-      }
+          // Method 2: For fact-based content, use the content as answer and create a question
+          const words = content.trim().split(' ');
+          const keyTerms = words.filter(word => word.length > 4).slice(0, 3);
+          const termsQuestion = `What ${
+            content.includes(" is ") ? "is" : "are"
+          } the key points about ${keyTerms.join(", ")}?`;
+          
+          let front, back;
+          
+          if (definitionMatch && definitionMatch[1] && definitionMatch[2]) {
+            // If it looks like a definition, format accordingly
+            const term = definitionMatch[1].trim();
+            front = `What is ${term}?`;
+            back = content;
+          } else {
+            // Otherwise use the content-based question
+            front = termsQuestion;
+            back = content;
+          }
+          
+          return {
+            front,
+            back,
+            category: 'PDF Extract',
+            difficulty: 'medium'
+          } as Omit<Flashcard, 'id' | 'dateCreated' | 'lastReviewed' | 'nextReviewDate'>;
+        });
       
       onExtractComplete(generatedFlashcards);
       
@@ -257,45 +213,6 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     } finally {
       setIsProcessing(false);
     }
-  };
-  
-  // Standard method for generating flashcards (no AI)
-  const processWithStandardMethod = () => {
-    return usefulContent
-      .slice(0, Math.min(usefulContent.length, 20)) // Limit to 20 flashcards max
-      .map((content) => {
-        // For each content piece, create a question-answer pair
-        
-        // Method 1: For definition-like content, use "What is X?" format
-        const definitionMatch = content.match(/([^.,:;]+)(?:is|are|refers to|means|defined as)([^.]*\.)/i);
-        
-        // Method 2: For fact-based content, use the content as answer and create a question
-        const words = content.trim().split(' ');
-        const keyTerms = words.filter(word => word.length > 4).slice(0, 3);
-        const termsQuestion = `What ${
-          content.includes(" is ") ? "is" : "are"
-        } the key points about ${keyTerms.join(", ")}?`;
-        
-        let front, back;
-        
-        if (definitionMatch && definitionMatch[1] && definitionMatch[2]) {
-          // If it looks like a definition, format accordingly
-          const term = definitionMatch[1].trim();
-          front = `What is ${term}?`;
-          back = content;
-        } else {
-          // Otherwise use the content-based question
-          front = termsQuestion;
-          back = content;
-        }
-        
-        return {
-          front,
-          back,
-          category: 'PDF Extract',
-          difficulty: 'medium'
-        } as Omit<Flashcard, 'id' | 'dateCreated' | 'lastReviewed' | 'nextReviewDate'>;
-      });
   };
 
   return (
@@ -333,47 +250,23 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
           )}
         </div>
         
-        <div className="flex items-center space-x-2">
-          {file && !isLoading && (
-            <div className="flex border rounded-md overflow-hidden">
-              <Button
-                variant={processingMethod === 'standard' ? "default" : "outline"}
-                size="sm"
-                className="rounded-none"
-                onClick={() => setProcessingMethod('standard')}
-              >
-                Standard
-              </Button>
-              <Button
-                variant={processingMethod === 'ai' ? "default" : "outline"}
-                size="sm"
-                className="rounded-none flex items-center gap-1"
-                onClick={() => setProcessingMethod('ai')}
-              >
-                <Brain className="h-3 w-3" />
-                AI-Enhanced
-              </Button>
-            </div>
+        <Button
+          onClick={processPdfContent}
+          disabled={usefulContent.length === 0 || isProcessing}
+          className="gap-2"
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Check className="h-4 w-4" />
+              Generate Flashcards
+            </>
           )}
-          
-          <Button
-            onClick={processPdfContent}
-            disabled={usefulContent.length === 0 || isProcessing}
-            className="gap-2"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" />
-                Generate Flashcards
-              </>
-            )}
-          </Button>
-        </div>
+        </Button>
       </div>
       
       {file && (
@@ -391,7 +284,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
             </CardContent>
           </Card>
           
-          {/* Extracted Text Preview */}
+          {/* Extracted Text Preview - Now showing useful content only */}
           <Card className="glass-card overflow-hidden h-96">
             <CardContent className="p-4 h-full overflow-auto">
               {isLoading ? (
