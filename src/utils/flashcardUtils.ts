@@ -1,16 +1,27 @@
 
-// Simple spaced repetition implementation
-export const calculateNextReviewDate = (difficulty: 'easy' | 'medium' | 'hard'): Date => {
+import { Flashcard } from '@/types/flashcard';
+
+/**
+ * Calculate the next review date based on the difficulty rating
+ * Easy: +5 days, Medium: +3 days, Hard: +1 day
+ */
+export const calculateNextReviewDate = (flashcard: Flashcard, rating: number | string): Date => {
   const now = new Date();
+  let daysToAdd = 0;
   
-  switch (difficulty) {
-    case 'easy':
-      return new Date(now.setDate(now.getDate() + 7)); // Review in 7 days
-    case 'medium':
-      return new Date(now.setDate(now.getDate() + 3)); // Review in 3 days
-    case 'hard':
-      return new Date(now.setDate(now.getDate() + 1)); // Review in 1 day
-    default:
-      return new Date(now.setDate(now.getDate() + 3));
+  // Handle both number and string formats for compatibility
+  if (typeof rating === 'number') {
+    daysToAdd = rating;
+  } else if (rating === 'easy') {
+    daysToAdd = 5;
+  } else if (rating === 'medium') {
+    daysToAdd = 3;
+  } else if (rating === 'hard') {
+    daysToAdd = 1;
   }
+  
+  const nextDate = new Date(now);
+  nextDate.setDate(nextDate.getDate() + daysToAdd);
+  
+  return nextDate;
 };

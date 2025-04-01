@@ -40,5 +40,7 @@ Locnix.ai is licensed under the MIT License.
 ## Contact
 
 - Email: support@locnix.ai
-- Twitter: [@locnixai](https://twitter.com/locnixai)
+- Discord: [Join our server](https://discord.gg/NDX2XnHsaM)
+- X: [@locnixai](https://x.com/locnixai)
 - GitHub: [github.com/locnixai](https://github.com/locnix.ai)
+

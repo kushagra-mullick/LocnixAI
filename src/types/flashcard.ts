@@ -4,9 +4,9 @@ export interface Flashcard {
   front: string;
   back: string;
   category?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
   dateCreated: Date;
   lastReviewed?: Date;
-  difficulty?: 'easy' | 'medium' | 'hard';
   nextReviewDate?: Date;
 }
 
@@ -19,4 +19,5 @@ export interface FlashcardContextType {
   getFlashcard: (id: string) => Flashcard | undefined;
   getFlashcardsForStudy: (count?: number) => Flashcard[];
   rateFlashcard: (id: string, difficulty: 'easy' | 'medium' | 'hard') => void;
+  isLoading: boolean;
 }

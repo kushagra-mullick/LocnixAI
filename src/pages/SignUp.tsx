@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,9 +24,16 @@ const formSchema = z.object({
 const SignUp = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { signup, isAuthenticated, isLoading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,32 +48,27 @@ const SignUp = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // In a real app, this would use the Supabase authentication
-      // For now, we'll simulate a successful signup
-      console.log("Sign up with:", values);
-      
-      // Simulate successful registration with a delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Use the login function from AuthContext
-      login({ name: values.name, email: values.email });
-      
-      toast({
-        title: "Account created!",
-        description: "You've successfully signed up for Locnix.ai.",
-      });
-      
-      navigate('/dashboard');
+      await signup(values.email, values.password, values.name);
+      // Redirect will happen via the useEffect hook when isAuthenticated changes
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign up failed",
-        description: "There was a problem creating your account.",
-      });
+      // Error is already handled in the signup function
+      // No need to show another toast here
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen pt-28 pb-20 flex items-center justify-center">
+          <div className="animate-spin text-primary text-2xl">◌</div>
+          <span className="ml-2">Loading...</span>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
