@@ -10,10 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Plus, Search, Clock, LayoutGrid, Book, Trash2, Edit, 
   Brain, ArrowRight, Filter, ListFilter, Calendar, FileText,
-  AlertCircle
+  AlertCircle, MessageSquare
 } from 'lucide-react';
 import FlashcardGenerator from '@/components/FlashcardGenerator';
 import PdfUploader from '@/components/PdfUploader';
+import FlashcardAIChat from '@/components/FlashcardAIChat';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,6 +36,7 @@ const Dashboard = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [showPdfUploader, setShowPdfUploader] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [newCardFront, setNewCardFront] = useState('');
   const [newCardBack, setNewCardBack] = useState('');
   const [newCardCategory, setNewCardCategory] = useState('');
@@ -221,6 +223,14 @@ const Dashboard = () => {
               >
                 <Brain className="w-4 h-4" />
                 AI Generate
+              </Button>
+              <Button 
+                variant="outline"
+                className="gap-2"
+                onClick={() => setShowAIChat(true)}
+              >
+                <MessageSquare className="w-4 h-4" />
+                AI Chat
               </Button>
               <Button 
                 variant="default" 
@@ -540,6 +550,13 @@ const Dashboard = () => {
               onClose={() => setShowPdfUploader(false)} 
             />
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* AI Chat Dialog */}
+      <Dialog open={showAIChat} onOpenChange={setShowAIChat}>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] p-0 overflow-hidden">
+          <FlashcardAIChat onClose={() => setShowAIChat(false)} />
         </DialogContent>
       </Dialog>
     </div>

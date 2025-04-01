@@ -35,14 +35,21 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (savedFlashcards) {
           try {
             const parsedFlashcards = JSON.parse(savedFlashcards);
-            // Convert string dates back to Date objects
-            const processedFlashcards = parsedFlashcards.map((card: any) => ({
-              ...card,
-              dateCreated: new Date(card.dateCreated),
-              lastReviewed: card.lastReviewed ? new Date(card.lastReviewed) : undefined,
-              nextReviewDate: card.nextReviewDate ? new Date(card.nextReviewDate) : undefined
-            }));
-            setFlashcards(processedFlashcards);
+            // If we have 0 flashcards in our sample data, we might want to clear localStorage
+            if (sampleFlashcards.length === 0) {
+              // Clear localStorage to ensure we start fresh
+              localStorage.removeItem('flashcards');
+              setFlashcards([]);
+            } else {
+              // Convert string dates back to Date objects
+              const processedFlashcards = parsedFlashcards.map((card: any) => ({
+                ...card,
+                dateCreated: new Date(card.dateCreated),
+                lastReviewed: card.lastReviewed ? new Date(card.lastReviewed) : undefined,
+                nextReviewDate: card.nextReviewDate ? new Date(card.nextReviewDate) : undefined
+              }));
+              setFlashcards(processedFlashcards);
+            }
           } catch (error) {
             console.error('Error parsing flashcards from localStorage', error);
             setFlashcards([]); // Use empty array if error

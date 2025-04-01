@@ -1,7 +1,7 @@
 
+import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { FlashcardProvider } from "./context/FlashcardContext";
@@ -22,8 +22,6 @@ import Tutorials from "./pages/Tutorials";
 import Community from "./pages/Community";
 import { Helmet } from "react-helmet";
 
-const queryClient = new QueryClient();
-
 // JSON-LD structured data for better SEO
 const structuredData = {
   "@context": "https://schema.org",
@@ -36,24 +34,27 @@ const structuredData = {
     "AI-Generated Flashcards",
     "Spaced Repetition",
     "Performance Analytics",
-    "Collaborative Learning"
+    "Collaborative Learning",
+    "AI Flashcard Chat"
   ]
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <FlashcardProvider>
-          <Toaster />
-          <Sonner />
-          {/* Add Helmet for dynamic metadata and structured data */}
-          <Helmet>
-            <script type="application/ld+json">
-              {JSON.stringify(structuredData)}
-            </script>
-          </Helmet>
-          <BrowserRouter>
+// Create a new QueryClient instance
+const queryClient = new QueryClient();
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <FlashcardProvider>
+            {/* Add Helmet for dynamic metadata and structured data */}
+            <Helmet>
+              <script type="application/ld+json">
+                {JSON.stringify(structuredData)}
+              </script>
+            </Helmet>
+            
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
@@ -71,11 +72,14 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </FlashcardProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            
+            <Toaster />
+            <Sonner />
+          </FlashcardProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
