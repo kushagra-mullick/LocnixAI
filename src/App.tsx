@@ -1,7 +1,6 @@
 
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { FlashcardProvider } from "./context/FlashcardContext";
@@ -22,8 +21,6 @@ import Tutorials from "./pages/Tutorials";
 import Community from "./pages/Community";
 import { Helmet } from "react-helmet";
 
-const queryClient = new QueryClient();
-
 // JSON-LD structured data for better SEO
 const structuredData = {
   "@context": "https://schema.org",
@@ -41,41 +38,44 @@ const structuredData = {
   ]
 };
 
+// Create a new QueryClient instance
+const queryClient = new QueryClient();
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+    <BrowserRouter>
       <AuthProvider>
         <FlashcardProvider>
-          <Toaster />
-          <Sonner />
           {/* Add Helmet for dynamic metadata and structured data */}
           <Helmet>
             <script type="application/ld+json">
               {JSON.stringify(structuredData)}
             </script>
           </Helmet>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/study" element={<Study />} />
-              <Route path="/signin" element={<SignIn />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/cookie-policy" element={<CookiePolicy />} />
-              <Route path="/about-us" element={<AboutUs />} />
-              <Route path="/features" element={<FeaturesPage />} />
-              <Route path="/help-center" element={<HelpCenter />} />
-              <Route path="/tutorials" element={<Tutorials />} />
-              <Route path="/community" element={<Community />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/study" element={<Study />} />
+            <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/cookie-policy" element={<CookiePolicy />} />
+            <Route path="/about-us" element={<AboutUs />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/help-center" element={<HelpCenter />} />
+            <Route path="/tutorials" element={<Tutorials />} />
+            <Route path="/community" element={<Community />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          
+          <Toaster />
+          <Sonner />
         </FlashcardProvider>
       </AuthProvider>
-    </TooltipProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
