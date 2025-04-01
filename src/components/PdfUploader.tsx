@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, FileText, X, Check } from 'lucide-react';
+import { Loader2, FileText, X, Check, Brain } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Flashcard } from '@/context/FlashcardContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // Set worker path
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -22,6 +23,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
+  const [processingMethod, setProcessingMethod] = useState<'standard' | 'ai'>('standard');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -158,42 +160,83 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setIsProcessing(true);
     
     try {
-      // Generate flashcards from the useful content
-      const generatedFlashcards = usefulContent
-        .slice(0, Math.min(usefulContent.length, 20)) // Limit to 20 flashcards max
-        .map((content) => {
-          // For each content piece, create a question-answer pair
+      let generatedFlashcards;
+      
+      if (processingMethod === 'ai') {
+        // Use AI to generate better flashcards
+        try {
+          const { data, error } = await supabase.functions.invoke('flashcard-ai-chat', {
+            body: { 
+              message: "Create high-quality flashcards from this PDF content. Make sure to use question/answer format, identify key concepts, and organize by topic/category:",
+              pdfContent: usefulContent.slice(0, Math.min(usefulContent.length, 30)).join("\n\n")
+            },
+          });
           
-          // Method 1: For definition-like content, use "What is X?" format
-          const definitionMatch = content.match(/([^.,:;]+)(?:is|are|refers to|means|defined as)([^.]*\.)/i);
+          if (error) throw error;
           
-          // Method 2: For fact-based content, use the content as answer and create a question
-          const words = content.trim().split(' ');
-          const keyTerms = words.filter(word => word.length > 4).slice(0, 3);
-          const termsQuestion = `What ${
-            content.includes(" is ") ? "is" : "are"
-          } the key points about ${keyTerms.join(", ")}?`;
-          
-          let front, back;
-          
-          if (definitionMatch && definitionMatch[1] && definitionMatch[2]) {
-            // If it looks like a definition, format accordingly
-            const term = definitionMatch[1].trim();
-            front = `What is ${term}?`;
-            back = content;
-          } else {
-            // Otherwise use the content-based question
-            front = termsQuestion;
-            back = content;
+          // Parse AI response to extract flashcards
+          try {
+            // The AI should return formatted content we can parse
+            const responseText = data.response;
+            const flashcardMatches = responseText.match(/Q:[^\n]*\nA:[^\n]*/g);
+            
+            if (flashcardMatches && flashcardMatches.length > 0) {
+              generatedFlashcards = flashcardMatches.map((match: string, index: number) => {
+                const [question, answer] = match.split('\nA:');
+                let category = 'AI Generated';
+                
+                // Try to extract category from response
+                if (responseText.includes('Category:')) {
+                  const categoryMatch = match.match(/Category:([^\n]*)/);
+                  if (categoryMatch && categoryMatch[1]) {
+                    category = categoryMatch[1].trim();
+                  }
+                }
+                
+                return {
+                  front: question.replace('Q:', '').trim(),
+                  back: answer.trim(),
+                  category,
+                  difficulty: 'medium'
+                };
+              });
+            } else {
+              // Fallback: if the AI response doesn't match expected format,
+              // extract sentences and create Q&A pairs
+              const sentences = responseText
+                .split(/[.!?]+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 20);
+              
+              generatedFlashcards = sentences.slice(0, 10).map((sentence: string) => {
+                const words = sentence.split(' ');
+                const keyTerms = words.filter(word => word.length > 5).slice(0, 2).join(', ');
+                return {
+                  front: `What is important about ${keyTerms}?`,
+                  back: sentence,
+                  category: 'AI Generated',
+                  difficulty: 'medium'
+                };
+              });
+            }
+          } catch (parseError) {
+            console.error('Error parsing AI response:', parseError);
+            throw new Error('Failed to parse AI response');
           }
-          
-          return {
-            front,
-            back,
-            category: 'PDF Extract',
-            difficulty: 'medium'
-          } as Omit<Flashcard, 'id' | 'dateCreated' | 'lastReviewed' | 'nextReviewDate'>;
-        });
+        } catch (aiError) {
+          console.error('Error using AI for flashcards:', aiError);
+          toast({
+            title: "AI Processing Failed",
+            description: "Falling back to standard processing method.",
+            variant: "destructive"
+          });
+          // Fallback to standard method
+          generatedFlashcards = processWithStandardMethod();
+        }
+      } else {
+        // Standard method (without AI)
+        generatedFlashcards = processWithStandardMethod();
+      }
       
       onExtractComplete(generatedFlashcards);
       
@@ -213,6 +256,45 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     } finally {
       setIsProcessing(false);
     }
+  };
+  
+  // Standard method for generating flashcards (no AI)
+  const processWithStandardMethod = () => {
+    return usefulContent
+      .slice(0, Math.min(usefulContent.length, 20)) // Limit to 20 flashcards max
+      .map((content) => {
+        // For each content piece, create a question-answer pair
+        
+        // Method 1: For definition-like content, use "What is X?" format
+        const definitionMatch = content.match(/([^.,:;]+)(?:is|are|refers to|means|defined as)([^.]*\.)/i);
+        
+        // Method 2: For fact-based content, use the content as answer and create a question
+        const words = content.trim().split(' ');
+        const keyTerms = words.filter(word => word.length > 4).slice(0, 3);
+        const termsQuestion = `What ${
+          content.includes(" is ") ? "is" : "are"
+        } the key points about ${keyTerms.join(", ")}?`;
+        
+        let front, back;
+        
+        if (definitionMatch && definitionMatch[1] && definitionMatch[2]) {
+          // If it looks like a definition, format accordingly
+          const term = definitionMatch[1].trim();
+          front = `What is ${term}?`;
+          back = content;
+        } else {
+          // Otherwise use the content-based question
+          front = termsQuestion;
+          back = content;
+        }
+        
+        return {
+          front,
+          back,
+          category: 'PDF Extract',
+          difficulty: 'medium'
+        } as Omit<Flashcard, 'id' | 'dateCreated' | 'lastReviewed' | 'nextReviewDate'>;
+      });
   };
 
   return (
@@ -250,23 +332,47 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
           )}
         </div>
         
-        <Button
-          onClick={processPdfContent}
-          disabled={usefulContent.length === 0 || isProcessing}
-          className="gap-2"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4" />
-              Generate Flashcards
-            </>
+        <div className="flex items-center space-x-2">
+          {file && !isLoading && (
+            <div className="flex border rounded-md overflow-hidden">
+              <Button
+                variant={processingMethod === 'standard' ? "default" : "outline"}
+                size="sm"
+                className="rounded-none"
+                onClick={() => setProcessingMethod('standard')}
+              >
+                Standard
+              </Button>
+              <Button
+                variant={processingMethod === 'ai' ? "default" : "outline"}
+                size="sm"
+                className="rounded-none flex items-center gap-1"
+                onClick={() => setProcessingMethod('ai')}
+              >
+                <Brain className="h-3 w-3" />
+                AI-Enhanced
+              </Button>
+            </div>
           )}
-        </Button>
+          
+          <Button
+            onClick={processPdfContent}
+            disabled={usefulContent.length === 0 || isProcessing}
+            className="gap-2"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                Generate Flashcards
+              </>
+            )}
+          </Button>
+        </div>
       </div>
       
       {file && (
@@ -284,7 +390,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
             </CardContent>
           </Card>
           
-          {/* Extracted Text Preview - Now showing useful content only */}
+          {/* Extracted Text Preview */}
           <Card className="glass-card overflow-hidden h-96">
             <CardContent className="p-4 h-full overflow-auto">
               {isLoading ? (
