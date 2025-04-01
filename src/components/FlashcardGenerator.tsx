@@ -7,8 +7,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { ArrowRightCircle, Brain, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 
 interface GeneratedFlashcard {
   id: string;
@@ -27,8 +25,6 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   const [generationProgress, setGenerationProgress] = useState(0);
   const [apiKey, setApiKey] = useState('');
   const [apiError, setApiError] = useState<string | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'anthropic' | 'perplexity' | 'gemini'>('openai');
-  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
   const { toast } = useToast();
   
   const generateFlashcards = async () => {
@@ -54,19 +50,29 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         });
       }, 100);
       
-      // Determine which API to use
-      let flashcardsData;
+      // Define the prompt for the LLM
+      const prompt = `
+        Create flashcards from the following text. 
+        For each important concept or fact, create a flashcard with a question on the front and answer on the back.
+        Return in this JSON format:
+        [{"front": "...", "back": "...", "category": "..."}]
+        Categories should be one of: Concept, Definition, Process, Example, Fact
+        Text: ${inputText}
+      `;
       
-      if (!apiKey.trim()) {
+      // Determine which API key to use
+      let keyToUse = apiKey.trim();
+      
+      if (!keyToUse) {
         // Generate mock flashcards if no API key is provided
         clearInterval(progressInterval);
         setGenerationProgress(100);
         
         // Generate smart mock flashcards based on input text
-        flashcardsData = generateMockFlashcards(inputText);
+        const mockFlashcards = generateMockFlashcards(inputText);
         
         if (onFlashcardsGenerated) {
-          onFlashcardsGenerated(flashcardsData);
+          onFlashcardsGenerated(mockFlashcards);
         }
         
         toast({
@@ -77,34 +83,78 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         return;
       }
       
-      // Make API call based on selected provider
-      switch (selectedProvider) {
-        case 'openai':
-          flashcardsData = await generateWithOpenAI(inputText);
-          break;
-        case 'anthropic':
-          flashcardsData = await generateWithAnthropic(inputText);
-          break;
-        case 'perplexity':
-          flashcardsData = await generateWithPerplexity(inputText);
-          break;
-        case 'gemini':
-          flashcardsData = await generateWithGemini(inputText);
-          break;
-        default:
-          flashcardsData = generateMockFlashcards(inputText);
-      }
+      // Make the API call with the provided key
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${keyToUse}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert educator who creates high-quality flashcards for effective learning.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7
+        })
+      });
       
       clearInterval(progressInterval);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        let errorMessage = `API request failed with status ${response.status}`;
+        
+        if (response.status === 429) {
+          errorMessage = "API rate limit exceeded. Please try with a different API key or use the simulated mode.";
+        } else if (errorData?.error?.message) {
+          errorMessage = errorData.error.message;
+        }
+        
+        setApiError(errorMessage);
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      // Parse the response to get flashcards
+      let flashcards;
+      try {
+        // Find JSON in the response (in case the AI wrapped it in text)
+        const jsonMatch = content.match(/\[.*\]/s);
+        if (jsonMatch) {
+          flashcards = JSON.parse(jsonMatch[0]);
+        } else {
+          flashcards = JSON.parse(content);
+        }
+      } catch (error) {
+        console.error("Failed to parse AI response:", content);
+        throw new Error("Failed to parse AI response");
+      }
+      
+      // Add IDs to the flashcards
+      const flashcardsWithIds = flashcards.map((card: any, index: number) => ({
+        ...card,
+        id: `card-${Date.now()}-${index}`
+      }));
+      
       setGenerationProgress(100);
       
       if (onFlashcardsGenerated) {
-        onFlashcardsGenerated(flashcardsData);
+        onFlashcardsGenerated(flashcardsWithIds);
       }
       
       toast({
         title: "Flashcards generated",
-        description: `Successfully created ${flashcardsData.length} flashcards.`
+        description: `Successfully created ${flashcardsWithIds.length} flashcards.`
       });
       
     } catch (error) {
@@ -128,306 +178,12 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
     }
   };
   
-  // Generate flashcards using OpenAI
-  const generateWithOpenAI = async (text: string): Promise<GeneratedFlashcard[]> => {
-    // Define the prompt for the OpenAI
-    const prompt = `
-      Create flashcards from the following text. 
-      For each important concept or fact, create a flashcard with a question on the front and answer on the back.
-      Return in this JSON format:
-      [{"front": "...", "back": "...", "category": "..."}]
-      Categories should be one of: Concept, Definition, Process, Example, Fact
-      Text: ${text}
-    `;
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert educator who creates high-quality flashcards for effective learning.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      let errorMessage = `API request failed with status ${response.status}`;
-      
-      if (response.status === 429) {
-        errorMessage = "API rate limit exceeded. Please try with a different API key or use the simulated mode.";
-      } else if (errorData?.error?.message) {
-        errorMessage = errorData.error.message;
-      }
-      
-      setApiError(errorMessage);
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    // Parse the response to get flashcards
-    let flashcards;
-    try {
-      // Find JSON in the response (in case the AI wrapped it in text)
-      const jsonMatch = content.match(/\[.*\]/s);
-      if (jsonMatch) {
-        flashcards = JSON.parse(jsonMatch[0]);
-      } else {
-        flashcards = JSON.parse(content);
-      }
-    } catch (error) {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI response");
-    }
-    
-    // Add IDs to the flashcards
-    return flashcards.map((card: any, index: number) => ({
-      ...card,
-      id: `card-${Date.now()}-${index}`
-    }));
-  };
-  
-  // Generate flashcards using Anthropic Claude
-  const generateWithAnthropic = async (text: string): Promise<GeneratedFlashcard[]> => {
-    const prompt = `
-      Create flashcards from the following text. 
-      For each important concept or fact, create a flashcard with a question on the front and answer on the back.
-      Return ONLY a JSON array with this format:
-      [{"front": "...", "back": "...", "category": "..."}]
-      Categories should be one of: Concept, Definition, Process, Example, Fact.
-      Do not include any explanation or other text outside the JSON array.
-      
-      Text to create flashcards from:
-      ${text}
-    `;
-    
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        max_tokens: 4000,
-        system: "You are an expert educator who creates high-quality flashcards for effective learning. Always respond with properly formatted JSON.",
-        messages: [
-          { role: 'user', content: prompt }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      let errorMessage = `API request failed with status ${response.status}`;
-      
-      if (errorData?.error?.message) {
-        errorMessage = errorData.error.message;
-      }
-      
-      setApiError(errorMessage);
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    const content = data.content[0].text;
-    
-    // Parse the response to get flashcards
-    let flashcards;
-    try {
-      // Find JSON in the response (in case the AI wrapped it in text)
-      const jsonMatch = content.match(/\[.*\]/s);
-      if (jsonMatch) {
-        flashcards = JSON.parse(jsonMatch[0]);
-      } else {
-        flashcards = JSON.parse(content);
-      }
-    } catch (error) {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI response");
-    }
-    
-    // Add IDs to the flashcards
-    return flashcards.map((card: any, index: number) => ({
-      ...card,
-      id: `card-${Date.now()}-${index}`
-    }));
-  };
-  
-  // Generate flashcards using Perplexity
-  const generateWithPerplexity = async (text: string): Promise<GeneratedFlashcard[]> => {
-    const prompt = `
-      Create flashcards from the following text. 
-      For each important concept or fact, create a flashcard with a question on the front and answer on the back.
-      Return ONLY a JSON array with this format:
-      [{"front": "...", "back": "...", "category": "..."}]
-      Categories should be one of: Concept, Definition, Process, Example, Fact.
-      Do not include any explanation or other text outside the JSON array.
-      
-      Text to create flashcards from:
-      ${text}
-    `;
-    
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert educator who creates high-quality flashcards for effective learning. Always respond with properly formatted JSON.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      let errorMessage = `API request failed with status ${response.status}`;
-      
-      if (errorData?.error?.message) {
-        errorMessage = errorData.error.message;
-      }
-      
-      setApiError(errorMessage);
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    // Parse the response to get flashcards
-    let flashcards;
-    try {
-      // Find JSON in the response (in case the AI wrapped it in text)
-      const jsonMatch = content.match(/\[.*\]/s);
-      if (jsonMatch) {
-        flashcards = JSON.parse(jsonMatch[0]);
-      } else {
-        flashcards = JSON.parse(content);
-      }
-    } catch (error) {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI response");
-    }
-    
-    // Add IDs to the flashcards
-    return flashcards.map((card: any, index: number) => ({
-      ...card,
-      id: `card-${Date.now()}-${index}`
-    }));
-  };
-  
-  // Generate flashcards using Google Gemini
-  const generateWithGemini = async (text: string): Promise<GeneratedFlashcard[]> => {
-    const prompt = `
-      Create flashcards from the following text. 
-      For each important concept or fact, create a flashcard with a question on the front and answer on the back.
-      Return ONLY a JSON array with this format:
-      [{"front": "...", "back": "...", "category": "..."}]
-      Categories should be one of: Concept, Definition, Process, Example, Fact.
-      Do not include any explanation or other text outside the JSON array.
-      
-      Text to create flashcards from:
-      ${text}
-    `;
-    
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: "You are an expert educator who creates high-quality flashcards for effective learning. Always respond with properly formatted JSON."
-              }
-            ]
-          },
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048
-        }
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      let errorMessage = `API request failed with status ${response.status}`;
-      
-      if (errorData?.error?.message) {
-        errorMessage = errorData.error.message;
-      }
-      
-      setApiError(errorMessage);
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    const content = data.candidates[0].content.parts[0].text;
-    
-    // Parse the response to get flashcards
-    let flashcards;
-    try {
-      // Find JSON in the response (in case the AI wrapped it in text)
-      const jsonMatch = content.match(/\[.*\]/s);
-      if (jsonMatch) {
-        flashcards = JSON.parse(jsonMatch[0]);
-      } else {
-        flashcards = JSON.parse(content);
-      }
-    } catch (error) {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI response");
-    }
-    
-    // Add IDs to the flashcards
-    return flashcards.map((card: any, index: number) => ({
-      ...card,
-      id: `card-${Date.now()}-${index}`
-    }));
-  };
-  
   // Helper function to generate smart mock flashcards from input text
   const generateMockFlashcards = (text: string): GeneratedFlashcard[] => {
     // Split the text into sentences
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
     
-    // Generate flashcards from important sentences (up to 7)
+    // Generate flashcards from important sentences (up to 5)
     return sentences.slice(0, Math.min(sentences.length, 7)).map((sentence, index) => {
       const words = sentence.trim().split(' ');
       
@@ -454,61 +210,6 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
       };
     });
   };
-
-  const getModelOptions = () => {
-    switch (selectedProvider) {
-      case 'openai':
-        return (
-          <>
-            <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-            <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-            <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-          </>
-        );
-      case 'anthropic':
-        return (
-          <>
-            <SelectItem value="claude-3-haiku-20240307">Claude 3 Haiku</SelectItem>
-            <SelectItem value="claude-3-sonnet-20240229">Claude 3 Sonnet</SelectItem>
-            <SelectItem value="claude-3-opus-20240229">Claude 3 Opus</SelectItem>
-          </>
-        );
-      case 'perplexity':
-        return (
-          <>
-            <SelectItem value="llama-3.1-sonar-small-128k-online">Llama 3.1 Sonar (Small)</SelectItem>
-            <SelectItem value="llama-3.1-sonar-large-128k-online">Llama 3.1 Sonar (Large)</SelectItem>
-            <SelectItem value="llama-3.1-sonar-huge-128k-online">Llama 3.1 Sonar (Huge)</SelectItem>
-          </>
-        );
-      case 'gemini':
-        return (
-          <>
-            <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
-          </>
-        );
-      default:
-        return null;
-    }
-  };
-  
-  // Update the default model when provider changes
-  React.useEffect(() => {
-    switch (selectedProvider) {
-      case 'openai':
-        setSelectedModel('gpt-4o-mini');
-        break;
-      case 'anthropic':
-        setSelectedModel('claude-3-haiku-20240307');
-        break;
-      case 'perplexity':
-        setSelectedModel('llama-3.1-sonar-small-128k-online');
-        break;
-      case 'gemini':
-        setSelectedModel('gemini-pro');
-        break;
-    }
-  }, [selectedProvider]);
   
   return (
     <Card className="glass-card w-full max-w-3xl mx-auto p-6 md:p-8">
@@ -533,62 +234,21 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
           onChange={(e) => setInputText(e.target.value)}
         />
         
-        {/* AI Provider and Model Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="ai-provider" className="block mb-1 text-gray-700 dark:text-gray-300">AI Provider</Label>
-            <Select 
-              value={selectedProvider} 
-              onValueChange={(value: any) => setSelectedProvider(value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select AI provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="anthropic">Anthropic Claude</SelectItem>
-                <SelectItem value="perplexity">Perplexity</SelectItem>
-                <SelectItem value="gemini">Google Gemini</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Label htmlFor="ai-model" className="block mb-1 text-gray-700 dark:text-gray-300">Model</Label>
-            <Select 
-              value={selectedModel} 
-              onValueChange={setSelectedModel}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {getModelOptions()}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        
         {/* API Key input with better explanation */}
         <div className="text-sm">
           <label htmlFor="api-key" className="block mb-1 text-gray-700 dark:text-gray-300">
-            API Key for {selectedProvider === 'openai' ? 'OpenAI' : 
-                        selectedProvider === 'anthropic' ? 'Anthropic' : 
-                        selectedProvider === 'perplexity' ? 'Perplexity' : 'Google Gemini'}
+            OpenAI API Key (required for real AI generation)
           </label>
           <input
             id="api-key"
             type="password"
-            placeholder="Enter your API key"
+            placeholder="sk-..."
             className="w-full px-3 py-2 border rounded-md text-sm"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />
           <p className="mt-1 text-xs text-gray-500">
-            {apiKey ? `API key provided - will use ${selectedProvider === 'openai' ? 'OpenAI' : 
-                      selectedProvider === 'anthropic' ? 'Anthropic Claude' : 
-                      selectedProvider === 'perplexity' ? 'Perplexity' : 'Google Gemini'} for generation` : 
-                      "Without an API key, we'll use AI simulation mode"}
+            {apiKey ? "API key provided - will use OpenAI for generation" : "Without an API key, we'll use AI simulation mode"}
           </p>
         </div>
         
