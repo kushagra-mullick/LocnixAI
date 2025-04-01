@@ -7,8 +7,27 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { Flashcard } from '@/context/FlashcardContext';
 import { supabase } from '@/integrations/supabase/client';
 
-// Set worker path
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set worker path to a CDN that matches our pdfjs version
+const PDFJS_VERSION = pdfjsLib.version;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+
+// For fallback in case the CDN fails
+if (typeof window !== 'undefined') {
+  // Create a backup worker if needed
+  window.pdfjsWorker = {
+    createWorker: async () => {
+      try {
+        // Try to load the worker from CDN
+        await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`);
+      } catch (e) {
+        console.warn('Using fallback worker');
+        // If that fails, use the bundled worker (will be slower to load but more reliable)
+        const PDFWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+        return PDFWorker;
+      }
+    }
+  };
+}
 
 interface PdfUploaderProps {
   onExtractComplete: (flashcards: Omit<Flashcard, 'id' | 'dateCreated' | 'lastReviewed' | 'nextReviewDate'>[]) => void;
@@ -28,6 +47,19 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
   const { toast } = useToast();
 
   useEffect(() => {
+    // Preload the PDF worker when component mounts
+    const preloadWorker = async () => {
+      try {
+        if (typeof window !== 'undefined' && window.pdfjsWorker) {
+          await window.pdfjsWorker.createWorker();
+        }
+      } catch (err) {
+        console.error('Error preloading PDF worker:', err);
+      }
+    };
+    
+    preloadWorker();
+    
     return () => {
       // Clean up the URL when component unmounts
       if (previewUrl) {
@@ -83,40 +115,56 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setProgress(0);
     
     try {
+      // Create a buffer from the file
       const arrayBuffer = await pdfFile.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      // Load the PDF document with more robust error handling
+      let pdf;
+      try {
+        pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      } catch (error) {
+        console.error('Error loading PDF document:', error);
+        throw new Error('Failed to load PDF document. The file might be corrupted or password-protected.');
+      }
+      
       const totalPages = pdf.numPages;
       let fullText = '';
       let potentialFlashcardContent: string[] = [];
       
       for (let i = 1; i <= totalPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        
-        let pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        
-        fullText += pageText + '\n\n';
-        
-        // Split the text into paragraphs and filter for useful content
-        const paragraphs = pageText.split(/\n{2,}/)
-          .filter(para => para.trim().length > 0);
-        
-        // Process each paragraph to identify useful content
-        paragraphs.forEach(paragraph => {
-          // Split into sentences
-          const sentences = paragraph.split(/(?<=[.!?])\s+/)
-            .filter(sentence => sentence.trim().length > 0);
+        try {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
           
-          sentences.forEach(sentence => {
-            if (isUsefulContent(sentence)) {
-              potentialFlashcardContent.push(sentence.trim());
-            }
+          let pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          
+          fullText += pageText + '\n\n';
+          
+          // Split the text into paragraphs and filter for useful content
+          const paragraphs = pageText.split(/\n{2,}/)
+            .filter(para => para.trim().length > 0);
+          
+          // Process each paragraph to identify useful content
+          paragraphs.forEach(paragraph => {
+            // Split into sentences
+            const sentences = paragraph.split(/(?<=[.!?])\s+/)
+              .filter(sentence => sentence.trim().length > 0);
+            
+            sentences.forEach(sentence => {
+              if (isUsefulContent(sentence)) {
+                potentialFlashcardContent.push(sentence.trim());
+              }
+            });
           });
-        });
-        
-        setProgress(Math.round((i / totalPages) * 100));
+          
+          setProgress(Math.round((i / totalPages) * 100));
+        } catch (pageError) {
+          console.error(`Error extracting text from page ${i}:`, pageError);
+          // Continue to next page instead of failing the whole process
+          continue;
+        }
       }
       
       // Remove duplicates and very similar content
@@ -135,7 +183,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
       console.error('Error extracting text from PDF:', error);
       toast({
         title: "PDF extraction failed",
-        description: "There was an error extracting text from the PDF.",
+        description: error instanceof Error ? error.message : "There was an error extracting text from the PDF.",
         variant: "destructive"
       });
     } finally {
@@ -165,64 +213,15 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
       if (processingMethod === 'ai') {
         // Use AI to generate better flashcards
         try {
-          const { data, error } = await supabase.functions.invoke('flashcard-ai-chat', {
+          const { data, error } = await supabase.functions.invoke('pdf-flashcard-generator', {
             body: { 
-              message: "Create high-quality flashcards from this PDF content. Make sure to use question/answer format, identify key concepts, and organize by topic/category:",
-              pdfContent: usefulContent.slice(0, Math.min(usefulContent.length, 30)).join("\n\n")
+              pdfContent: usefulContent.slice(0, Math.min(usefulContent.length, 30))
             },
           });
           
           if (error) throw error;
           
-          // Parse AI response to extract flashcards
-          try {
-            // The AI should return formatted content we can parse
-            const responseText = data.response;
-            const flashcardMatches = responseText.match(/Q:[^\n]*\nA:[^\n]*/g);
-            
-            if (flashcardMatches && flashcardMatches.length > 0) {
-              generatedFlashcards = flashcardMatches.map((match: string, index: number) => {
-                const [question, answer] = match.split('\nA:');
-                let category = 'AI Generated';
-                
-                // Try to extract category from response
-                if (responseText.includes('Category:')) {
-                  const categoryMatch = match.match(/Category:([^\n]*)/);
-                  if (categoryMatch && categoryMatch[1]) {
-                    category = categoryMatch[1].trim();
-                  }
-                }
-                
-                return {
-                  front: question.replace('Q:', '').trim(),
-                  back: answer.trim(),
-                  category,
-                  difficulty: 'medium'
-                };
-              });
-            } else {
-              // Fallback: if the AI response doesn't match expected format,
-              // extract sentences and create Q&A pairs
-              const sentences = responseText
-                .split(/[.!?]+/)
-                .map(s => s.trim())
-                .filter(s => s.length > 20);
-              
-              generatedFlashcards = sentences.slice(0, 10).map((sentence: string) => {
-                const words = sentence.split(' ');
-                const keyTerms = words.filter(word => word.length > 5).slice(0, 2).join(', ');
-                return {
-                  front: `What is important about ${keyTerms}?`,
-                  back: sentence,
-                  category: 'AI Generated',
-                  difficulty: 'medium'
-                };
-              });
-            }
-          } catch (parseError) {
-            console.error('Error parsing AI response:', parseError);
-            throw new Error('Failed to parse AI response');
-          }
+          generatedFlashcards = data.flashcards;
         } catch (aiError) {
           console.error('Error using AI for flashcards:', aiError);
           toast({
