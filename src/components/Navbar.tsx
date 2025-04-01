@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Menu, X, Brain, LogOut, User } from "lucide-react";
 import { useAuth } from '@/context/AuthContext';
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import {
+import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,236 +13,182 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Moon, Sun, Github, Twitter, Brain } from 'lucide-react';
-import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
 
 const Navbar = () => {
-  const { isAuthenticated, user, logout } = useAuth();
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
+  const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { setTheme } = useTheme();
+  const location = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
 
-  const closeMobileMenu = () => {
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
     setIsMobileMenuOpen(false);
-  };
+  }, [location.pathname]);
 
-  const handleSignOut = async () => {
-    await logout();
-    navigate('/');
+  const handleLogout = () => {
+    logout();
+    // Could add a toast notification here
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 transition-all duration-200 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
-      <div className="container mx-auto px-4">
-        <div className="flex h-20 items-center justify-between">
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center">
-              <span className="font-bold text-2xl">Locnix.ai</span>
-            </Link>
-            
-            <nav className="hidden md:flex items-center space-x-1 ml-10">
-              <Link
-                to="/dashboard"
-                className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors",
-                  pathname === "/dashboard"
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-              >
-                Dashboard
-              </Link>
-              <Link
-                to="/study"
-                className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors",
-                  pathname === "/study"
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-              >
-                Study
-              </Link>
-              <Link
-                to="/ai-chat"
-                className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
-                  pathname === "/ai-chat"
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-              >
-                <Brain className="w-4 h-4" />
-                AI Chat
-              </Link>
-              <a
-                href="https://github.com/username/repo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
-              >
-                <Github className="w-4 h-4 mr-2" />
-                GitHub
-              </a>
-            </nav>
-          </div>
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        isScrolled ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm py-3" : "bg-transparent py-5"
+      )}
+    >
+      <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
+        <Link 
+          to="/" 
+          className="flex items-center gap-2 text-xl font-display font-semibold text-primary"
+        >
+          <Brain className="w-6 h-6" />
+          <span className="animate-fade-in">Locnix.ai</span>
+        </Link>
 
-          <div className="flex items-center space-x-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="px-0">
-                  <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span className="sr-only">Toggle theme</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setTheme("light")}>
-                  Light
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")}>
-                  Dark
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")}>
-                  System
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {isAuthenticated ? (
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-1">
+          <NavItem to="/" label="Home" currentPath={location.pathname} />
+          <NavItem to="/dashboard" label="Dashboard" currentPath={location.pathname} />
+          <NavItem to="/study" label="Study" currentPath={location.pathname} />
+          
+          {isAuthenticated ? (
+            <div className="ml-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.name ? `https://avatar.vercel.sh/${user.name}` : undefined} alt={user?.name || 'User'} />
-                      <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
-                    </Avatar>
+                  <Button variant="outline" size="sm" className="rounded-full">
+                    <User className="w-4 h-4 mr-2" />
+                    {user?.name || user?.email || 'Account'}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user?.name || 'User'}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/dashboard')}>Dashboard</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/study')}>Study</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/ai-chat')}>AI Chat</DropdownMenuItem>
                   <DropdownMenuItem>
-                    <a href="https://twitter.com/locnix_ai" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                      <Twitter className="h-4 w-4 mr-2" />
-                      Follow us on Twitter
-                    </a>
+                    <Link to="/dashboard" className="flex w-full">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Link to="/profile" className="flex w-full">Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>Logout</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" /> Logout
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
-              <div className="hidden md:flex items-center space-x-2">
-                <Link to="/signin" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors">
+            </div>
+          ) : (
+            <div className="ml-4 flex items-center space-x-2">
+              <Link to="/signin">
+                <Button variant="outline" size="sm" className="rounded-full px-4">
                   Sign In
-                </Link>
-                <Link to="/signup" className="px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground shadow-sm hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 transition-colors">
-                  Sign Up
-                </Link>
-              </div>
-            )}
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleMobileMenu}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-6 h-6"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3 6.75A.75.75 0 013.75 6h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 6.75zM3 12A.75.75 0 013.75 11.25h16.5a.75.75 0 010 1.5H3.75A.75.75 0 013 12zm0 5.25a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </Button>
-          </div>
-        </div>
-      </div>
-      
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-2">
-          <nav className="flex flex-col space-y-2">
-            <Link
-              to="/dashboard"
-              className={cn(
-                "block px-4 py-2 rounded-md text-sm font-medium transition-colors",
-                pathname === "/dashboard"
-                  ? "bg-primary/10 text-primary"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-              onClick={closeMobileMenu}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/study"
-              className={cn(
-                "block px-4 py-2 rounded-md text-sm font-medium transition-colors",
-                pathname === "/study"
-                  ? "bg-primary/10 text-primary"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-              onClick={closeMobileMenu}
-            >
-              Study
-            </Link>
-             <Link
-                to="/ai-chat"
-                className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1",
-                  pathname === "/ai-chat"
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-                onClick={closeMobileMenu}
-              >
-                <Brain className="w-4 h-4" />
-                AI Chat
+                </Button>
               </Link>
-            <a
-              href="https://github.com/username/repo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
-              onClick={closeMobileMenu}
-            >
-              <Github className="w-4 h-4 mr-2" />
-              GitHub
-            </a>
-            {!isAuthenticated ? (
-              <>
-                <Link to="/signin" className="block px-4 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors" onClick={closeMobileMenu}>
-                  Sign In
-                </Link>
-                <Link to="/signup" className="block px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground shadow-sm hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 transition-colors" onClick={closeMobileMenu}>
+              <Link to="/signup">
+                <Button size="sm" className="rounded-full px-4 shadow-md hover:shadow-lg transition-all">
                   Sign Up
-                </Link>
+                </Button>
+              </Link>
+            </div>
+          )}
+        </nav>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="md:hidden text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg animate-slide-down">
+          <nav className="container mx-auto px-4 py-4 flex flex-col space-y-3">
+            <MobileNavItem to="/" label="Home" currentPath={location.pathname} />
+            <MobileNavItem to="/dashboard" label="Dashboard" currentPath={location.pathname} />
+            <MobileNavItem to="/study" label="Study" currentPath={location.pathname} />
+            
+            {isAuthenticated ? (
+              <>
+                <MobileNavItem to="/profile" label="Profile" currentPath={location.pathname} />
+                <div className="pt-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full rounded-lg justify-center" 
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" /> Logout
+                  </Button>
+                </div>
               </>
             ) : (
-              <Button variant="outline" className="w-full" onClick={handleSignOut}>Logout</Button>
+              <>
+                <MobileNavItem to="/signin" label="Sign In" currentPath={location.pathname} />
+                <div className="pt-2">
+                  <Link to="/signup" className="w-full block">
+                    <Button className="w-full rounded-lg justify-center">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+              </>
             )}
           </nav>
         </div>
       )}
     </header>
+  );
+};
+
+const NavItem = ({ to, label, currentPath }: { to: string; label: string; currentPath: string }) => {
+  const isActive = currentPath === to;
+  
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "px-3 py-2 rounded-full text-sm font-medium transition-all duration-200",
+        isActive 
+          ? "text-primary bg-primary/10" 
+          : "text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:bg-gray-100/80 dark:hover:bg-gray-800/80"
+      )}
+    >
+      {label}
+    </Link>
+  );
+};
+
+const MobileNavItem = ({ to, label, currentPath }: { to: string; label: string; currentPath: string }) => {
+  const isActive = currentPath === to;
+  
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "px-4 py-3 rounded-lg text-base font-medium transition-all",
+        isActive 
+          ? "text-primary bg-primary/10" 
+          : "text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+      )}
+    >
+      {label}
+    </Link>
   );
 };
 
