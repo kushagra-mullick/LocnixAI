@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -12,10 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Moon, Sun, Github, Twitter, Brain } from 'lucide-react';
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
 
 const Navbar = () => {
-  const { isAuthenticated, user, signOut } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -30,7 +32,7 @@ const Navbar = () => {
   };
 
   const handleSignOut = async () => {
-    await signOut();
+    await logout();
     navigate('/');
   };
 
@@ -116,8 +118,8 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name} />
-                      <AvatarFallback>{user?.user_metadata?.full_name?.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={user?.name ? `https://avatar.vercel.sh/${user.name}` : undefined} alt={user?.name || 'User'} />
+                      <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -125,7 +127,7 @@ const Navbar = () => {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {user?.user_metadata?.full_name}
+                        {user?.name || 'User'}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {user?.email}
