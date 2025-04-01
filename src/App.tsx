@@ -36,7 +36,8 @@ const structuredData = {
     "AI-Generated Flashcards",
     "Spaced Repetition",
     "Performance Analytics",
-    "Collaborative Learning"
+    "Collaborative Learning",
+    "AI Flashcard Chat"
   ]
 };
 
