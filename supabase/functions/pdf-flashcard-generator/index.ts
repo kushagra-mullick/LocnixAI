@@ -1,7 +1,21 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 
+// Define types for API responses
+interface FlashcardData {
+  front: string;
+  back: string;
+  category: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+// Define a type for the request body
+interface RequestBody {
+  pdfContent: string[];
+}
+
+// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -14,116 +28,153 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfContent } = await req.json();
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
-    if (!openAIApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+    // Get the OPENAI API key from environment variables
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    
+    if (!openaiApiKey) {
+      throw new Error('Missing OpenAI API key');
     }
 
-    if (!pdfContent || (Array.isArray(pdfContent) && pdfContent.length === 0)) {
-      return new Response(
-        JSON.stringify({ error: 'No PDF content provided' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+    // Parse the request body
+    const { pdfContent } = await req.json() as RequestBody;
+    
+    if (!pdfContent || !Array.isArray(pdfContent) || pdfContent.length === 0) {
+      throw new Error('Invalid or empty PDF content provided');
     }
 
-    console.log("Received PDF content for processing, content length:", 
-      Array.isArray(pdfContent) ? pdfContent.length : pdfContent.length);
+    // Limit the content to process to avoid token limits
+    const limitedContent = pdfContent.slice(0, Math.min(pdfContent.length, 25));
+    
+    console.log(`Processing ${limitedContent.length} PDF content segments`);
 
-    // Format content for the AI
-    const contentForAI = Array.isArray(pdfContent) 
-      ? pdfContent.join("\n\n")
-      : pdfContent;
+    // Generate flashcards using OpenAI
+    const flashcards = await generateFlashcardsWithAI(limitedContent, openaiApiKey);
+    
+    console.log(`Generated ${flashcards.length} flashcards successfully`);
 
-    const prompt = `
-      You are an expert educator who creates high-quality flashcards.
-      Analyze the following PDF content and create educational flashcards.
-      
-      For each important concept, create a flashcard with:
-      - A clear question on the front (prefixed with "Q:")
-      - A concise answer on the back (prefixed with "A:")
-      - A category label (prefixed with "Category:")
-      
-      Focus on key concepts, definitions, and important facts.
-      Make questions specific enough to test knowledge but not overly complex.
-      Organize similar concepts together under the same category.
-      Format your response as a series of flashcards, each with Q:, A:, and Category: clearly marked.
-      
-      PDF Content:
-      ${contentForAI.substring(0, 4000)} // Limit to first 4000 chars to avoid token limits
-    `;
+    // Return the generated flashcards
+    return new Response(
+      JSON.stringify({ 
+        flashcards,
+        processed: limitedContent.length,
+        total: pdfContent.length
+      }),
+      { 
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
+  } catch (error) {
+    console.error('Error in PDF flashcard generator:', error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: error.message || 'Failed to generate flashcards',
+      }),
+      { 
+        status: 500, 
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
+  }
+});
 
+async function generateFlashcardsWithAI(contentSegments: string[], apiKey: string): Promise<FlashcardData[]> {
+  const combinedContent = contentSegments.join('\n\n').substring(0, 6000);
+  
+  // Create the prompt for OpenAI
+  const prompt = `
+  You are an intelligent tool for creating effective flashcards from educational content.
+  Convert the following text extracted from a PDF into ${Math.min(contentSegments.length, 15)} high-quality flashcards.
+  
+  Each flashcard should have:
+  1. Front: A clear, concise question or prompt
+  2. Back: A comprehensive but focused answer
+  3. Category: A fitting category for the content (e.g., "Biology", "History", etc.)
+  4. Difficulty: Either "easy", "medium", or "hard" based on the complexity
+  
+  For best learning results:
+  - Create questions that test understanding, not just recall
+  - Focus on key concepts and important details
+  - Phrase questions clearly and unambiguously
+  - Ensure answers are concise but complete
+  
+  The content to process is:
+  ${combinedContent}
+  
+  Format your response as JSON with this structure:
+  [
+    {
+      "front": "Question/prompt here?",
+      "back": "Answer here",
+      "category": "Category name",
+      "difficulty": "medium"
+    },
+    ...more flashcards
+  ]
+  
+  Only return the JSON array with no additional text.
+  `;
+
+  // Call OpenAI API
+  try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are an expert educator who creates high-quality flashcards for effective learning.' },
+          { role: 'system', content: 'You are an AI assistant that creates educational flashcards from text.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
+        max_tokens: 4000,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+      throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
-
-    // Parse the response to extract flashcards
-    let flashcards = [];
-    const flashcardPattern = /Q:(.*?)\nA:(.*?)(?:\nCategory:(.*?))?(?=\n\nQ:|$)/gs;
-    let match;
-
-    while ((match = flashcardPattern.exec(aiResponse)) !== null) {
-      const front = match[1]?.trim();
-      const back = match[2]?.trim();
-      const category = match[3]?.trim() || 'AI Generated';
-
-      if (front && back) {
-        flashcards.push({
-          front,
-          back,
-          category,
-          difficulty: 'medium'
-        });
-      }
-    }
-
-    // If pattern matching failed, return the raw AI response
-    if (flashcards.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          flashcards: [], 
-          rawResponse: aiResponse,
-          error: "Failed to parse flashcards from AI response" 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    const aiResponse = data.choices[0].message.content.trim();
+    
+    // Extract JSON from response (handle case where AI might add extra text)
+    let jsonStr = aiResponse;
+    if (aiResponse.includes('[') && aiResponse.includes(']')) {
+      jsonStr = aiResponse.substring(
+        aiResponse.indexOf('['),
+        aiResponse.lastIndexOf(']') + 1
       );
     }
-
-    console.log(`Successfully generated ${flashcards.length} flashcards from PDF content`);
-
-    return new Response(
-      JSON.stringify({ flashcards }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    
+    // Parse the JSON response
+    const flashcards = JSON.parse(jsonStr) as FlashcardData[];
+    
+    // Ensure the flashcards have the correct structure
+    return flashcards.map(card => ({
+      front: card.front || "What is this concept about?",
+      back: card.back || "Information not provided",
+      category: card.category || "PDF Extract",
+      difficulty: card.difficulty || "medium"
+    }));
   } catch (error) {
-    console.error('Error in pdf-flashcard-generator function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('Error generating flashcards with AI:', error);
+    // Return a simple fallback in case of API errors
+    return contentSegments.slice(0, 5).map((content, index) => ({
+      front: `What is the key concept in extract ${index + 1}?`,
+      back: content,
+      category: "PDF Extract",
+      difficulty: "medium" as const
+    }));
   }
-});
+}

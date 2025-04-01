@@ -11,22 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 const PDFJS_VERSION = pdfjsLib.version;
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
 
-// For fallback in case the CDN fails
-if (typeof window !== 'undefined') {
-  // Create a backup worker if needed
-  window.pdfjsWorker = {
-    createWorker: async () => {
-      try {
-        // Try to load the worker from CDN
-        await import(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`);
-      } catch (e) {
-        console.warn('Using fallback worker');
-        // If that fails, use the bundled worker (will be slower to load but more reliable)
-        const PDFWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-        return PDFWorker;
-      }
-    }
-  };
+// Add a type declaration for our custom window property
+declare global {
+  interface Window {
+    pdfjsWorkerLoaded?: boolean;
+  }
 }
 
 interface PdfUploaderProps {
@@ -50,8 +39,21 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     // Preload the PDF worker when component mounts
     const preloadWorker = async () => {
       try {
-        if (typeof window !== 'undefined' && window.pdfjsWorker) {
-          await window.pdfjsWorker.createWorker();
+        // Check if worker is already loaded
+        if (!window.pdfjsWorkerLoaded) {
+          // Try to dynamically load the worker script
+          const script = document.createElement('script');
+          script.src = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+          script.async = true;
+          script.onload = () => {
+            window.pdfjsWorkerLoaded = true;
+            console.log('PDF.js worker loaded successfully');
+          };
+          script.onerror = (error) => {
+            console.error('Failed to load PDF.js worker from CDN:', error);
+            // Let the PDF.js library handle the fallback
+          };
+          document.head.appendChild(script);
         }
       } catch (err) {
         console.error('Error preloading PDF worker:', err);
