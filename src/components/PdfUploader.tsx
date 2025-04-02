@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -89,12 +88,36 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
       console.log('Starting PDF extraction...');
       const arrayBuffer = await pdfFile.arrayBuffer();
       
-      // Load the PDF document
+      // Check if PDF.js is properly loaded
+      if (!pdfjsLib || !pdfjsLib.getDocument) {
+        throw new Error("PDF.js library not properly loaded");
+      }
+      
+      // Ensure worker is properly configured
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        console.warn("Worker source not configured. Setting it now.");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      }
+      
+      // Load the PDF document with better error handling
       const loadingTask = pdfjsLib.getDocument({data: arrayBuffer});
+      
+      // Add error handler to the loading task
+      loadingTask.onPassword = (updatePassword: (password: string) => void, reason: number) => {
+        console.error("Password protected PDF detected");
+        setError("This PDF is password protected. Please try another file.");
+        setIsLoading(false);
+      };
+      
       const pdf: PDFDocumentProxy = await loadingTask.promise;
       
       console.log(`PDF loaded, pages: ${pdf.numPages}`);
       const totalPages = pdf.numPages;
+      
+      if (totalPages === 0) {
+        throw new Error("PDF has no pages");
+      }
+      
       let fullText = '';
       let potentialFlashcardContent: string[] = [];
       
@@ -102,6 +125,11 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
         try {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
+          
+          if (!textContent || !textContent.items || textContent.items.length === 0) {
+            console.warn(`Page ${i} has no text content`);
+            continue;
+          }
           
           let pageText = textContent.items
             .map((item: any) => item.str)
@@ -133,11 +161,21 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
         }
       }
       
+      if (potentialFlashcardContent.length === 0 && fullText.trim().length > 0) {
+        // If we have text but no flashcard content, try less strict filtering
+        const sentences = fullText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 20);
+        potentialFlashcardContent = sentences.slice(0, Math.min(sentences.length, 15));
+      }
+      
       // Remove duplicates and very similar content
       const uniqueContent = Array.from(new Set(potentialFlashcardContent));
       
       setExtractedText(fullText);
       setUsefulContent(uniqueContent);
+      
+      if (uniqueContent.length === 0 && fullText.trim().length === 0) {
+        throw new Error("No text could be extracted from this PDF file. It might be scanned or image-based.");
+      }
       
       console.log(`Extraction complete. Found ${uniqueContent.length} potential flashcard concepts.`);
       
@@ -149,10 +187,10 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
       
     } catch (error) {
       console.error('Error extracting text from PDF:', error);
-      setError("Failed to extract text from the PDF. Please try another file.");
+      setError(error instanceof Error ? error.message : "Failed to extract text from the PDF. Please try another file.");
       toast({
         title: "PDF extraction failed",
-        description: "There was an error extracting text from the PDF.",
+        description: error instanceof Error ? error.message : "There was an error extracting text from the PDF.",
         variant: "destructive"
       });
     } finally {
