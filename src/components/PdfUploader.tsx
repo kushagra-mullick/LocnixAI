@@ -1,13 +1,15 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, FileText, X, Check } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { PDFDocumentProxy } from 'pdfjs-dist';
 import { Flashcard } from '@/types/flashcard';
 
-// Set worker path for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Import the worker directly to avoid CDN dependency issues
+import 'pdfjs-dist/build/pdf.worker.entry';
 
 interface PdfUploaderProps {
   onExtractComplete: (flashcards: Omit<Flashcard, 'id' | 'dateCreated' | 'lastReviewed' | 'nextReviewDate'>[]) => void;
@@ -22,6 +24,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -38,6 +41,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     const selectedFile = e.target.files?.[0];
     if (selectedFile && selectedFile.type === 'application/pdf') {
       setFile(selectedFile);
+      setError(null);
       const url = URL.createObjectURL(selectedFile);
       setPreviewUrl(url);
       extractTextFromPdf(selectedFile);
@@ -79,42 +83,54 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setExtractedText('');
     setUsefulContent([]);
     setProgress(0);
+    setError(null);
     
     try {
+      console.log('Starting PDF extraction...');
       const arrayBuffer = await pdfFile.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      // Load the PDF document
+      const loadingTask = pdfjsLib.getDocument({data: arrayBuffer});
+      const pdf: PDFDocumentProxy = await loadingTask.promise;
+      
+      console.log(`PDF loaded, pages: ${pdf.numPages}`);
       const totalPages = pdf.numPages;
       let fullText = '';
       let potentialFlashcardContent: string[] = [];
       
       for (let i = 1; i <= totalPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        
-        let pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        
-        fullText += pageText + '\n\n';
-        
-        // Split the text into paragraphs and filter for useful content
-        const paragraphs = pageText.split(/\n{2,}/)
-          .filter(para => para.trim().length > 0);
-        
-        // Process each paragraph to identify useful content
-        paragraphs.forEach(paragraph => {
-          // Split into sentences
-          const sentences = paragraph.split(/(?<=[.!?])\s+/)
-            .filter(sentence => sentence.trim().length > 0);
+        try {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
           
-          sentences.forEach(sentence => {
-            if (isUsefulContent(sentence)) {
-              potentialFlashcardContent.push(sentence.trim());
-            }
+          let pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          
+          fullText += pageText + '\n\n';
+          
+          // Split the text into paragraphs and filter for useful content
+          const paragraphs = pageText.split(/\n{2,}/)
+            .filter(para => para.trim().length > 0);
+          
+          // Process each paragraph to identify useful content
+          paragraphs.forEach(paragraph => {
+            // Split into sentences
+            const sentences = paragraph.split(/(?<=[.!?])\s+/)
+              .filter(sentence => sentence.trim().length > 0);
+            
+            sentences.forEach(sentence => {
+              if (isUsefulContent(sentence)) {
+                potentialFlashcardContent.push(sentence.trim());
+              }
+            });
           });
-        });
-        
-        setProgress(Math.round((i / totalPages) * 100));
+          
+          setProgress(Math.round((i / totalPages) * 100));
+        } catch (pageError) {
+          console.error(`Error processing page ${i}:`, pageError);
+          continue; // Skip problematic page and continue with others
+        }
       }
       
       // Remove duplicates and very similar content
@@ -122,6 +138,8 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
       
       setExtractedText(fullText);
       setUsefulContent(uniqueContent);
+      
+      console.log(`Extraction complete. Found ${uniqueContent.length} potential flashcard concepts.`);
       
       toast({
         title: "Content extracted",
@@ -131,6 +149,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
       
     } catch (error) {
       console.error('Error extracting text from PDF:', error);
+      setError("Failed to extract text from the PDF. Please try another file.");
       toast({
         title: "PDF extraction failed",
         description: "There was an error extracting text from the PDF.",
@@ -147,6 +166,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setExtractedText('');
     setUsefulContent([]);
     setProgress(0);
+    setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -268,6 +288,12 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
           )}
         </Button>
       </div>
+      
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded" role="alert">
+          <p>{error}</p>
+        </div>
+      )}
       
       {file && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
