@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PdfViewerProps {
   previewUrl: string | null;
@@ -131,9 +132,6 @@ const GenerateFlashcardsButton: React.FC<GenerateFlashcardsButtonProps> = ({
   apiKey,
   provider
 }) => {
-  const { Button } = require('@/components/ui/button');
-  const { Loader2, Check } = require('lucide-react');
-  
   return (
     <Button 
       onClick={onGenerateFlashcards}
