@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea component
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -363,7 +364,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         </div>
       </div>
       
-      <div className="flex-grow overflow-auto p-4 bg-slate-50 dark:bg-slate-900/50 min-h-0">
+      <ScrollArea className="flex-grow overflow-auto p-4 bg-slate-50 dark:bg-slate-900/50 min-h-0">
         <div className="space-y-4 max-w-3xl mx-auto">
           {messages.filter(msg => msg.role !== 'system').map((message, index) => (
             <div
@@ -398,7 +399,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
           )}
           <div ref={messagesEndRef} />
         </div>
-      </div>
+      </ScrollArea>
       
       <div className="p-4 border-t bg-background">
         <div className="flex w-full items-center space-x-2 max-w-3xl mx-auto">
