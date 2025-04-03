@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 interface ApiSettingsProps {
   provider: string;
@@ -15,6 +16,8 @@ interface ApiSettingsProps {
   setApiKey: (apiKey: string) => void;
   showApiKeyInput: boolean;
   setShowApiKeyInput: (show: boolean) => void;
+  useSimulationMode: boolean;
+  setUseSimulationMode: (use: boolean) => void;
 }
 
 const ApiSettings: React.FC<ApiSettingsProps> = ({
@@ -25,7 +28,9 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
   apiKey,
   setApiKey,
   showApiKeyInput,
-  setShowApiKeyInput
+  setShowApiKeyInput,
+  useSimulationMode,
+  setUseSimulationMode
 }) => {
   // Get model options based on selected provider
   const getModelOptions = () => {
@@ -83,54 +88,76 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
       
       {showApiKeyInput && (
         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md space-y-4 border">
-          <div className="space-y-2">
-            <Label htmlFor="ai-provider">AI Provider</Label>
-            <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select AI provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="anthropic">Anthropic Claude</SelectItem>
-                <SelectItem value="perplexity">Perplexity</SelectItem>
-                <SelectItem value="gemini">Google Gemini</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500">
-              Choose your preferred AI provider
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="model-select">Model</Label>
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {getModelOptions()}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="api-key">
-              {provider === 'openai' ? 'OpenAI API Key' : 
-               provider === 'anthropic' ? 'Anthropic API Key' : 
-               provider === 'perplexity' ? 'Perplexity API Key' : 
-               'Google API Key'}
-            </Label>
-            <Input 
-              id="api-key"
-              type="password"
-              placeholder={`Enter your ${provider} API key`}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="simulation-mode" 
+              checked={useSimulationMode}
+              onCheckedChange={setUseSimulationMode}
             />
-            <p className="text-xs text-gray-500">
-              Your API key is only used for this request and not stored.
-            </p>
+            <Label htmlFor="simulation-mode">Use AI Simulation (No API Key Required)</Label>
           </div>
+          
+          {!useSimulationMode && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="ai-provider">AI Provider</Label>
+                <Select value={provider} onValueChange={setProvider}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select AI provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                    <SelectItem value="anthropic">Anthropic Claude</SelectItem>
+                    <SelectItem value="perplexity">Perplexity</SelectItem>
+                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Choose your preferred AI provider
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="model-select">Model</Label>
+                <Select value={model} onValueChange={setModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getModelOptions()}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="api-key">
+                  {provider === 'openai' ? 'OpenAI API Key' : 
+                   provider === 'anthropic' ? 'Anthropic API Key' : 
+                   provider === 'perplexity' ? 'Perplexity API Key' : 
+                   'Google API Key'}
+                </Label>
+                <Input 
+                  id="api-key"
+                  type="password"
+                  placeholder={`Enter your ${provider} API key`}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  Your API key is only used for this request and not stored.
+                </p>
+              </div>
+            </>
+          )}
+
+          {useSimulationMode && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+              <p className="text-sm">
+                Simulation Mode is ON. The app will generate sample flashcards without requiring an API key.
+                While these won't be as high-quality as AI-generated ones, they'll help you test the app's functionality.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </>
