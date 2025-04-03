@@ -54,7 +54,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
         setModel('llama-3.1-sonar-small-128k-online');
         break;
       case 'gemini':
-        setModel('gemini-pro');
+        setModel('gemini-1.5-flash'); // Default to free Gemini model
         break;
       default:
         break;

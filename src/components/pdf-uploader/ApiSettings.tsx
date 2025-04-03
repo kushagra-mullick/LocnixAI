@@ -59,6 +59,8 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
           <>
             <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
             <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+            <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash (Free)</SelectItem>
+            <SelectItem value="gemini-pro-vision">Gemini Pro Vision (Free)</SelectItem>
           </>
         );
       default:

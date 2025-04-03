@@ -197,7 +197,10 @@ export const processWithGemini = async (
   model: string,
   extractedText: string
 ) => {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+  // Adjust the endpoint for different Gemini models
+  const isVisionModel = model === 'gemini-pro-vision';
+  
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:${isVisionModel ? 'generateContent' : 'generateContent'}?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
