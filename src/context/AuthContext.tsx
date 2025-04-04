@@ -1,9 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut, getSession } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';  // Add this import
 
 // Define the shape of our user object
 type AuthUser = {
@@ -42,13 +42,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
+  // Add a global navigate function
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log("Auth state change event:", event);
-        console.log("Session:", session);
-        
         if (session) {
           const authUser = session.user;
           setUser({
@@ -62,16 +61,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setSession(null);
           setIsAuthenticated(false);
+          // Redirect to signin if not authenticated
+          navigate('/signin');
         }
         setIsLoading(false);
       }
     );
 
-    // Check if user is already logged in
     const checkAuth = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        console.log("Initial session check:", data);
         
         if (data.session) {
           const authUser = data.session.user;
@@ -82,23 +81,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setSession(data.session);
           setIsAuthenticated(true);
+        } else {
+          // Redirect to signin if no session
+          navigate('/signin');
         }
       } catch (error) {
         console.error("Error checking authentication:", error);
         setUser(null);
         setSession(null);
         setIsAuthenticated(false);
+        navigate('/signin');
       }
       setIsLoading(false);
     };
     
     checkAuth();
     
-    // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const login = async (email: string, password: string) => {
     try {
