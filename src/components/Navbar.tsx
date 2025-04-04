@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ const Navbar = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">
           <NavItem to="/" label="Home" currentPath={location.pathname} />
+          <NavItem to="/dashboard" label="Dashboard" currentPath={location.pathname} />
           <NavItem to="/study" label="Study" currentPath={location.pathname} />
           
           {isAuthenticated ? (
@@ -76,6 +78,9 @@ const Navbar = () => {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Link to="/dashboard" className="flex w-full">Dashboard</Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Link to="/profile" className="flex w-full">Profile</Link>
                   </DropdownMenuItem>
@@ -116,6 +121,7 @@ const Navbar = () => {
         <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg animate-slide-down">
           <nav className="container mx-auto px-4 py-4 flex flex-col space-y-3">
             <MobileNavItem to="/" label="Home" currentPath={location.pathname} />
+            <MobileNavItem to="/dashboard" label="Dashboard" currentPath={location.pathname} />
             <MobileNavItem to="/study" label="Study" currentPath={location.pathname} />
             
             {isAuthenticated ? (
