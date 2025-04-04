@@ -21,6 +21,7 @@ import HelpCenter from "./pages/HelpCenter";
 import Tutorials from "./pages/Tutorials";
 import Community from "./pages/Community";
 import { Helmet } from "react-helmet";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // JSON-LD structured data for better SEO
 const structuredData = {
@@ -57,8 +58,16 @@ const App = () => {
             
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/study" element={<Study />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/study" element={
+                <ProtectedRoute>
+                  <Study />
+                </ProtectedRoute>
+              } />
               <Route path="/signin" element={<SignIn />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/terms" element={<Terms />} />
