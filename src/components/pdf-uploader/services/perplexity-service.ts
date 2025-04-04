@@ -69,9 +69,10 @@ export const processWithPerplexity = async (
       }
       
       // Add IDs to flashcards
-      return flashcards.map((card, index) => ({
+      return flashcards.map((card: any, index: number) => ({
         ...card,
-        id: `card-${Date.now()}-${index}`
+        id: `card-${Date.now()}-${index}`,
+        category: card.category || "PDF Extract"
       }));
     } catch (parseError) {
       console.error('Error parsing flashcard JSON from Perplexity:', parseError, 'Content:', content);
@@ -82,4 +83,3 @@ export const processWithPerplexity = async (
     throw error;
   }
 };
-

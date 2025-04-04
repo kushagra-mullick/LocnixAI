@@ -87,7 +87,7 @@ export const processWithGemini = async (
         // If still no results, try line-by-line parsing
         if (flashcards.length === 0) {
           const lines = content.split('\n');
-          let currentCard = {};
+          let currentCard: Record<string, string> = {};
           
           for (const line of lines) {
             if (line.includes('front') || line.includes('question')) {
@@ -114,7 +114,8 @@ export const processWithGemini = async (
             }
           }
           
-          if (Object.keys(currentCard).length > 0 && currentCard.front && currentCard.back) {
+          // Add the last card if it has both front and back
+          if (currentCard.front && currentCard.back) {
             if (!currentCard.category) currentCard.category = "PDF Extract";
             flashcards.push(currentCard);
           }
@@ -122,7 +123,7 @@ export const processWithGemini = async (
       }
       
       // Add IDs and default category if missing
-      return flashcards.map((card, index) => ({
+      return flashcards.map((card: any, index: number) => ({
         ...card,
         id: `card-${Date.now()}-${index}`,
         category: card.category || "PDF Extract"
@@ -136,4 +137,3 @@ export const processWithGemini = async (
     throw error;
   }
 };
-
