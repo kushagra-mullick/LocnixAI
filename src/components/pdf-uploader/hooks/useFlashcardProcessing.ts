@@ -24,6 +24,11 @@ export const useFlashcardProcessing = (
     useSimulationMode: boolean
   ) => {
     if (!extractedText) {
+      toast({
+        title: "No text to process",
+        description: "Please upload a PDF first to extract text.",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -37,6 +42,7 @@ export const useFlashcardProcessing = (
     }
     
     setIsProcessing(true);
+    setError(null); // Clear any previous errors
     
     try {
       let flashcards = [];
@@ -51,30 +57,50 @@ export const useFlashcardProcessing = (
         flashcards = generateMockFlashcards(extractedText);
       } else {
         // Use actual API based on provider selection
-        switch (provider) {
-          case 'openai':
-            flashcards = await processWithOpenAI(apiKey, model, extractedText);
-            break;
-          case 'anthropic':
-            flashcards = await processWithAnthropic(apiKey, model, extractedText);
-            break;
-          case 'perplexity':
-            flashcards = await processWithPerplexity(apiKey, model, extractedText);
-            break;
-          case 'gemini':
-            flashcards = await processWithGemini(apiKey, model, extractedText);
-            break;
-          default:
-            throw new Error("Unsupported provider");
+        try {
+          switch (provider) {
+            case 'openai':
+              flashcards = await processWithOpenAI(apiKey, model, extractedText);
+              break;
+            case 'anthropic':
+              flashcards = await processWithAnthropic(apiKey, model, extractedText);
+              break;
+            case 'perplexity':
+              flashcards = await processWithPerplexity(apiKey, model, extractedText);
+              break;
+            case 'gemini':
+              flashcards = await processWithGemini(apiKey, model, extractedText);
+              break;
+            default:
+              throw new Error("Unsupported provider");
+          }
+        } catch (apiError) {
+          console.error(`Error with ${provider} API:`, apiError);
+          throw new Error(`${provider} API Error: ${apiError.message || "Unknown error"}`);
         }
       }
       
-      if (flashcards.length > 0) {
-        onExtractComplete(flashcards);
-        toast({
-          title: "Flashcards created",
-          description: `Successfully created ${flashcards.length} flashcards from your PDF.`
-        });
+      if (Array.isArray(flashcards) && flashcards.length > 0) {
+        // Validate and fix any malformed flashcards
+        const validFlashcards = flashcards.filter(card => 
+          card && typeof card === 'object' && card.front && card.back
+        ).map((card, index) => ({
+          id: card.id || `card-${Date.now()}-${index}`,
+          front: String(card.front),
+          back: String(card.back),
+          category: card.category || "PDF Extract"
+        }));
+        
+        if (validFlashcards.length > 0) {
+          onExtractComplete(validFlashcards);
+          toast({
+            title: "Flashcards created",
+            description: `Successfully created ${validFlashcards.length} flashcards from your PDF.`
+          });
+          return;
+        } else {
+          throw new Error("Failed to create valid flashcards. The AI response was malformed.");
+        }
       } else {
         throw new Error("Failed to create flashcards. No cards were generated.");
       }
@@ -85,6 +111,12 @@ export const useFlashcardProcessing = (
       // Fall back to simulation mode if API fails
       if (!useSimulationMode) {
         try {
+          toast({
+            title: "API processing failed",
+            description: "Falling back to simulation mode to generate sample flashcards.",
+            variant: "destructive"
+          });
+          
           const mockFlashcards = generateMockFlashcards(extractedText);
           onExtractComplete(mockFlashcards);
           toast({
@@ -116,3 +148,4 @@ export const useFlashcardProcessing = (
     processWithLLM
   };
 };
+
