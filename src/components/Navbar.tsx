@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,7 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
-  const isMobile = useMobile(); // Revert to original
+  const isMobile = useIsMobile(); // Revert to original
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
