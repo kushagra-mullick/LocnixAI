@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
-  const isMobile = useIsMobile(); // Revert to original
+  const isMobile = useIsMobile(); // Use the correct hook name
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
