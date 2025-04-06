@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Flashcard } from "@/types/flashcard";
 
@@ -41,30 +40,6 @@ export const getUser = async () => {
 export const getSession = async () => {
   const { data } = await supabase.auth.getSession();
   return data?.session || null;
-};
-
-// User profile operations
-export const updateUserProfile = async (userId: string, updates: { name?: string }) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', userId)
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data;
-};
-
-export const getUserProfile = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  
-  if (error) throw error;
-  return data;
 };
 
 // Flashcards database operations

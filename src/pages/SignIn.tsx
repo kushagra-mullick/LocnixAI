@@ -1,148 +1,152 @@
-
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { FaGoogle, FaDiscord } from 'react-icons/fa';
-import { useAuth } from '@/context/AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
-import { Helmet } from 'react-helmet';
+import { useAuth } from '@/context/AuthContext';
+
+const formSchema = z.object({
+  email: z.string().email({ message: "Invalid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+});
 
 const SignIn = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const { login, signInWithProvider, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
-
-  // Get location state to handle redirects after login
-  const location = useLocation();
-  const from = location.state?.from || '/dashboard';
-
+  const { toast } = useToast();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
   useEffect(() => {
-    // If already authenticated, redirect to the originally requested page or dashboard
     if (isAuthenticated) {
-      navigate(from);
+      navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate]);
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-  const submitLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
     try {
-      await login(email, password);
-      // No need to navigate here, AuthContext will handle redirect
+      await login(values.email, values.password);
+      // Redirect happens automatically in the useEffect hook when isAuthenticated changes
     } catch (error) {
-      // Error is handled in AuthContext
-    }
-  };
-
-  const submitSignUp = () => {
-    navigate('/signup');
-  };
-
-  // Inside handleGoogleLogin and handleDiscordLogin, update to pass the redirect location
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithProvider('google');
-      // The redirect is handled by Supabase directly
-    } catch (error) {
-      console.error('Google login error:', error);
-    }
-  };
-
-  const handleDiscordLogin = async () => {
-    try {
-      await signInWithProvider('discord');
-      // The redirect is handled by Supabase directly
-    } catch (error) {
-      console.error('Discord login error:', error);
+      // Error is already handled in the login function
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <>
-      <Helmet>
-        <title>Sign In - Locnix.ai</title>
-        <meta name="description" content="Sign in to Locnix.ai to access your personalized flashcards and learning tools." />
-      </Helmet>
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow flex items-center justify-center">
-          <div className="container mx-auto px-4 py-8">
-            <div className="max-w-md mx-auto">
-              <Card className="bg-white dark:bg-gray-900 shadow-md rounded-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
-                    Welcome back!
-                  </CardTitle>
-                  <CardDescription className="text-gray-500 dark:text-gray-400">
-                    Sign in to continue learning.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Tabs defaultValue="sign-in" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="sign-in">Sign In</TabsTrigger>
-                      <TabsTrigger value="sign-up" onClick={submitSignUp}>Sign Up</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="sign-in" className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          placeholder="Enter your email"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input
-                          id="password"
-                          placeholder="Enter your password"
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                        />
-                      </div>
-                      <Button className="w-full" onClick={submitLogin} disabled={isLoading}>
-                        {isLoading ? "Signing In..." : "Sign In"}
-                      </Button>
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-                <CardFooter className="flex flex-col space-y-2">
-                  <div className="text-center text-gray-500 dark:text-gray-400">
-                    Or continue with
-                  </div>
-                  <div className="flex justify-center space-x-4">
-                    <Button
-                      variant="outline"
-                      className="rounded-full p-2"
-                      onClick={handleGoogleLogin}
-                      disabled={isLoading}
-                    >
-                      <FaGoogle className="w-5 h-5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="rounded-full p-2"
-                      onClick={handleDiscordLogin}
-                      disabled={isLoading}
-                    >
-                      <FaDiscord className="w-5 h-5" />
-                    </Button>
-                  </div>
-                  <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    <Link to="/forgot-password" className="hover:underline">
-                      Forgot password?
-                    </Link>
-                  </div>
-                </CardFooter>
-              </Card>
+      <Navbar />
+      <div className="min-h-screen pt-28 pb-20">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Welcome Back</h1>
+              <p className="text-gray-500 dark:text-gray-400 md:text-xl/relaxed">
+                Sign in to your Locnix.ai account to continue your learning journey
+              </p>
+            </div>
+            
+            <div className="w-full max-w-md space-y-6 mt-8">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"} 
+                              placeholder="••••••••" 
+                              {...field} 
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <span className="sr-only">Toggle password visibility</span>
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <span className="animate-spin mr-2">◌</span> Signing in...
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="mr-2 h-4 w-4" /> Sign In
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Form>
+              
+              <div className="text-center text-sm">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Don't have an account?{" "}
+                  <Link to="/signup" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                    Sign up
+                  </Link>
+                </p>
+                <p className="mt-2">
+                  <Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-primary">
+                    Forgot your password?
+                  </Link>
+                </p>
+              </div>
+              
+              <div className="text-xs text-gray-400 dark:text-gray-500 mt-8">
+                By signing in, you agree to our{" "}
+                <Link to="/terms" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className="underline hover:text-gray-600 dark:hover:text-gray-300">
+                  Privacy Policy
+                </Link>
+              </div>
             </div>
           </div>
         </div>

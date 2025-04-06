@@ -1,8 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import {
+import { cn } from "@/lib/utils";
+import { Menu, X, Brain, LogOut, User } from "lucide-react";
+import { useAuth } from '@/context/AuthContext';
+import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,144 +12,177 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from '@/context/AuthContext';
-import { LogOut, User, Settings, Menu, X, Moon, Sun, BookOpen } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useTheme } from 'next-themes';
 
-const Navbar: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+const Navbar = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const isMobile = useIsMobile(); // Use the correct hook name
-  const { theme, setTheme } = useTheme();
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  const { user, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
-    setIsMenuOpen(false); // Close the menu when the route changes
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'Features', path: '/features' },
-    { name: 'About Us', path: '/about-us' },
-  ];
-
-  const authNavItems = isAuthenticated ? [
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Study', path: '/study', icon: <BookOpen className="w-4 h-4 mr-2" /> },
-    { name: 'Profile', path: '/profile' },
-  ] : [];
+  const handleLogout = () => {
+    logout();
+    // Could add a toast notification here
+  };
 
   return (
-    <nav className="bg-background border-b sticky top-0 z-50">
-      <div className="container max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-        <Link to="/" className="flex items-center">
-          <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Locnix.ai</span>
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        isScrolled ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm py-3" : "bg-transparent py-5"
+      )}
+    >
+      <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
+        <Link 
+          to="/" 
+          className="flex items-center gap-2 text-xl font-display font-semibold text-primary"
+        >
+          <Brain className="w-6 h-6" />
+          <span className="animate-fade-in">Locnix.ai</span>
         </Link>
-        
-        {/* Mobile Menu Button */}
-        {isMobile && (
-          <Button variant="ghost" onClick={toggleMenu}>
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        )}
-        
-        <div className={`${isMobile ? (isMenuOpen ? 'block' : 'hidden') : 'block'} w-full md:block md:w-auto`}>
-          <ul className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:mt-0 md:border-0 md:bg-transparent dark:bg-gray-900 dark:border-gray-700">
-            {navItems.map((item, index) => (
-              <li key={index}>
-                <Link to={item.path} className="block py-2 pl-3 pr-4 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-primary md:p-0 dark:text-white md:dark:hover:text-primary dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">
-                  {item.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
 
-        <div className="flex items-center space-x-4">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={toggleTheme}>
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  <span className="sr-only">Toggle theme</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Toggle dark mode</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-1">
+          <NavItem to="/" label="Home" currentPath={location.pathname} />
+          <NavItem to="/study" label="Study" currentPath={location.pathname} />
           
           {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-                    <AvatarFallback>CN</AvatarFallback>
-                  </Avatar>
-                  <span className="sr-only">Open user menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard">
-                    Dashboard
-                  </Link>
-                </DropdownMenuItem>
-                {authNavItems.find(item => item.name === 'Study') && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/study">
-                      Study
-                    </Link>
+            <div className="ml-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-full">
+                    <User className="w-4 h-4 mr-2" />
+                    {user?.name || user?.email || 'Account'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Link to="/profile" className="flex w-full">Profile</Link>
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem asChild>
-                  <Link to="/profile">
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  Logout <LogOut className="ml-auto h-4 w-4" />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" /> Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : (
-            <>
+            <div className="ml-4 flex items-center space-x-2">
               <Link to="/signin">
-                <Button variant="ghost" size="sm">
+                <Button variant="outline" size="sm" className="rounded-full px-4">
                   Sign In
                 </Button>
               </Link>
               <Link to="/signup">
-                <Button variant="default" size="sm">
+                <Button size="sm" className="rounded-full px-4 shadow-md hover:shadow-lg transition-all">
                   Sign Up
                 </Button>
               </Link>
-            </>
+            </div>
           )}
-        </div>
+        </nav>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="md:hidden text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
       </div>
-    </nav>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg animate-slide-down">
+          <nav className="container mx-auto px-4 py-4 flex flex-col space-y-3">
+            <MobileNavItem to="/" label="Home" currentPath={location.pathname} />
+            <MobileNavItem to="/study" label="Study" currentPath={location.pathname} />
+            
+            {isAuthenticated ? (
+              <>
+                <MobileNavItem to="/profile" label="Profile" currentPath={location.pathname} />
+                <div className="pt-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full rounded-lg justify-center" 
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" /> Logout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <MobileNavItem to="/signin" label="Sign In" currentPath={location.pathname} />
+                <div className="pt-2">
+                  <Link to="/signup" className="w-full block">
+                    <Button className="w-full rounded-lg justify-center">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            )}
+          </nav>
+        </div>
+      )}
+    </header>
+  );
+};
+
+const NavItem = ({ to, label, currentPath }: { to: string; label: string; currentPath: string }) => {
+  const isActive = currentPath === to;
+  
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "px-3 py-2 rounded-full text-sm font-medium transition-all duration-200",
+        isActive 
+          ? "text-primary bg-primary/10" 
+          : "text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:bg-gray-100/80 dark:hover:bg-gray-800/80"
+      )}
+    >
+      {label}
+    </Link>
+  );
+};
+
+const MobileNavItem = ({ to, label, currentPath }: { to: string; label: string; currentPath: string }) => {
+  const isActive = currentPath === to;
+  
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "px-4 py-3 rounded-lg text-base font-medium transition-all",
+        isActive 
+          ? "text-primary bg-primary/10" 
+          : "text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+      )}
+    >
+      {label}
+    </Link>
   );
 };
 

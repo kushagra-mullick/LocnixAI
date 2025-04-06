@@ -4,7 +4,6 @@ import { signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabase
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
-import { useNavigate, useLocation } from 'react-router-dom';
 
 // Define the shape of our user object
 type AuthUser = {
@@ -19,7 +18,6 @@ type AuthContextType = {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name?: string) => Promise<void>;
-  signInWithProvider: (provider: 'google' | 'discord') => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
   session: Session | null;
@@ -31,7 +29,6 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   login: async () => {},
   signup: async () => {},
-  signInWithProvider: async () => {},
   logout: async () => {},
   isLoading: false,
   session: null,
@@ -44,13 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Check if the current route should be protected
-  const isProtectedRoute = () => {
-    return ['/dashboard', '/profile'].includes(location.pathname);
-  };
 
   useEffect(() => {
     // Set up auth state listener first
@@ -72,11 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setSession(null);
           setIsAuthenticated(false);
-          
-          // Redirect to sign in if on a protected route
-          if (isProtectedRoute()) {
-            navigate('/signin');
-          }
         }
         setIsLoading(false);
       }
@@ -97,20 +82,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setSession(data.session);
           setIsAuthenticated(true);
-        } else if (isProtectedRoute()) {
-          // Redirect to sign in if on a protected route and not authenticated
-          navigate('/signin');
         }
       } catch (error) {
         console.error("Error checking authentication:", error);
         setUser(null);
         setSession(null);
         setIsAuthenticated(false);
-        
-        // Redirect to sign in if on a protected route
-        if (isProtectedRoute()) {
-          navigate('/signin');
-        }
       }
       setIsLoading(false);
     };
@@ -121,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate, location.pathname]);
+  }, []);
 
   const login = async (email: string, password: string) => {
     try {
@@ -173,31 +150,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithProvider = async (provider: 'google' | 'discord') => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: window.location.origin + '/dashboard',
-        },
-      });
-      
-      if (error) throw error;
-      
-      console.log("Provider auth initiated:", data);
-    } catch (error: any) {
-      console.error(`Error signing in with ${provider}:`, error);
-      toast({
-        variant: "destructive",
-        title: `${provider.charAt(0).toUpperCase() + provider.slice(1)} login failed`,
-        description: error.message || `There was a problem logging you in with ${provider}.`,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const logout = async () => {
     try {
       setIsLoading(true);
@@ -220,16 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
-      login, 
-      signup, 
-      signInWithProvider,
-      logout, 
-      isLoading, 
-      session 
-    }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, signup, logout, isLoading, session }}>
       {children}
     </AuthContext.Provider>
   );

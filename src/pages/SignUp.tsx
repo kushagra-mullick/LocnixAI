@@ -1,161 +1,202 @@
-
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { FaGoogle, FaDiscord } from 'react-icons/fa'; // Corrected import
-import { useAuth } from '@/context/AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
-import { Helmet } from 'react-helmet';
+import { useAuth } from '@/context/AuthContext';
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: z.string().email({ message: "Invalid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  terms: z.boolean().refine(val => val === true, {
+    message: "You must agree to the terms and conditions",
+  }),
+});
 
 const SignUp = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const { signup, signInWithProvider, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
-
-  // Get location state to handle redirects after signup
-  const location = useLocation();
-  const from = location.state?.from || '/dashboard';
-
+  const { toast } = useToast();
+  const { signup, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Redirect if already authenticated
   useEffect(() => {
-    // If already authenticated, redirect to the originally requested page or dashboard
     if (isAuthenticated) {
-      navigate(from);
+      navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate]);
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      terms: false,
+    },
+  });
 
-  const submitSignUp = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
     try {
-      await signup(email, password, name);
-      // After successful signup, the AuthContext should handle the redirection
+      await signup(values.email, values.password, values.name);
+      // Redirect will happen via the useEffect hook when isAuthenticated changes
     } catch (error) {
-      console.error('Signup failed', error);
-      // Handle signup error (e.g., display error message)
+      // Error is already handled in the signup function
+      // No need to show another toast here
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Inside handleGoogleLogin and handleDiscordLogin, update to pass the redirect location
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithProvider('google');
-      // The redirect is handled by Supabase directly
-    } catch (error) {
-      console.error('Google login error:', error);
-    }
-  };
-
-  const handleDiscordLogin = async () => {
-    try {
-      await signInWithProvider('discord');
-      // The redirect is handled by Supabase directly
-    } catch (error) {
-      console.error('Discord login error:', error);
-    }
-  };
+  if (authLoading) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen pt-28 pb-20 flex items-center justify-center">
+          <div className="animate-spin text-primary text-2xl">◌</div>
+          <span className="ml-2">Loading...</span>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      <Helmet>
-        <title>Sign Up - Locnix.ai</title>
-        <meta name="description" content="Sign up to Locnix.ai and start creating AI-powered flashcards for faster learning and better retention." />
-      </Helmet>
       <Navbar />
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-        <Card className="w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-semibold text-gray-800 dark:text-white">Create Account</CardTitle>
-            <CardDescription className="text-gray-500 dark:text-gray-400">
-              Join our community and start learning!
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-8">
-            <Tabs defaultValue="email" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="email">Email</TabsTrigger>
-                <TabsTrigger value="social">Social</TabsTrigger>
-              </TabsList>
-              <TabsContent value="email" className="mt-6">
-                <form onSubmit={submitSignUp} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Enter your name"
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:border-gray-600"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                      Email
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:border-gray-600"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="password" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                      Password
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:border-gray-600"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Creating Account...' : 'Create Account'}
+      <div className="min-h-screen pt-28 pb-20">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Create Your Account</h1>
+              <p className="text-gray-500 dark:text-gray-400 md:text-xl/relaxed">
+                Join Locnix.ai and transform your learning experience
+              </p>
+            </div>
+            
+            <div className="w-full max-w-md space-y-6 mt-8">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"} 
+                              placeholder="••••••••" 
+                              {...field} 
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <span className="sr-only">Toggle password visibility</span>
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="terms"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-normal">
+                            I agree to the{" "}
+                            <Link to="/terms" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                              terms of service
+                            </Link>{" "}
+                            and{" "}
+                            <Link to="/privacy" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                              privacy policy
+                            </Link>
+                          </FormLabel>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <span className="animate-spin mr-2">◌</span> Creating Account...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" /> Create Account
+                      </>
+                    )}
                   </Button>
                 </form>
-              </TabsContent>
-              <TabsContent value="social" className="mt-6">
-                <div className="space-y-4">
-                  <Button
-                    className="w-full flex items-center justify-center gap-2 bg-blue-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover:bg-blue-700"
-                    onClick={handleGoogleLogin}
-                    disabled={isLoading}
-                  >
-                    <FaGoogle className="text-lg" />
-                    Sign Up with Google
-                  </Button>
-                  <Button
-                    className="w-full flex items-center justify-center gap-2 bg-purple-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover:bg-purple-700"
-                    onClick={handleDiscordLogin}
-                    disabled={isLoading}
-                  >
-                    <FaDiscord className="text-lg" />
-                    Sign Up with Discord
-                  </Button>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          <CardFooter className="px-8 py-4 text-center text-gray-700 dark:text-gray-300">
-            Already have an account? <Link to="/signin" className="text-primary hover:underline">Sign In</Link>
-          </CardFooter>
-        </Card>
+              </Form>
+              
+              <div className="text-center text-sm">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Already have an account?{" "}
+                  <Link to="/signin" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
