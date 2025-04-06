@@ -26,7 +26,7 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
-  const isMobile = useIsMobile(); // Corrected this line
+  const isMobile = useMobile(); // Revert to original
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
