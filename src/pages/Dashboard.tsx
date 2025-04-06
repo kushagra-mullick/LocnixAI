@@ -10,15 +10,13 @@ const Dashboard = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
-  // Get location state to handle redirects after login
-  const from = location.state?.from || '/';
-
+  // We don't need to redirect authenticated users from the dashboard page
+  // Only redirect if not authenticated
   React.useEffect(() => {
-    // If already authenticated, redirect to the originally requested page or dashboard
-    if (isAuthenticated) {
-      navigate(from);
+    if (!isAuthenticated) {
+      navigate('/signin', { state: { from: '/dashboard' } });
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
