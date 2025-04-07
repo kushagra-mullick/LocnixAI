@@ -90,7 +90,7 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
           <Key className="h-4 w-4" />
           {showApiKeyInput ? 'Hide API Settings' : 'API Settings'}
           {apiKey && !showApiKeyInput && (
-            <Badge variant="success" className="ml-2 flex items-center gap-1 bg-green-500">
+            <Badge variant="secondary" className="ml-2 flex items-center gap-1 bg-green-500 text-white">
               <Check className="h-3 w-3" /> Saved
             </Badge>
           )}
