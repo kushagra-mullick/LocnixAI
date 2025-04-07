@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Menu, X, Brain, LogOut, User } from "lucide-react";
+import { Menu, X, Brain, LogOut, User, BookOpen, LayoutDashboard } from "lucide-react";
 import { useAuth } from '@/context/AuthContext';
 import { 
   DropdownMenu,
@@ -17,6 +18,7 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
@@ -40,7 +42,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    // Could add a toast notification here
+    navigate('/');
   };
 
   return (
@@ -62,7 +64,13 @@ const Navbar = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">
           <NavItem to="/" label="Home" currentPath={location.pathname} />
-          <NavItem to="/study" label="Study" currentPath={location.pathname} />
+          
+          {isAuthenticated && (
+            <>
+              <NavItem to="/dashboard" label="Dashboard" currentPath={location.pathname} />
+              <NavItem to="/study" label="Study" currentPath={location.pathname} />
+            </>
+          )}
           
           {isAuthenticated ? (
             <div className="ml-4">
@@ -70,17 +78,29 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="rounded-full">
                     <User className="w-4 h-4 mr-2" />
-                    {user?.name || user?.email || 'Account'}
+                    {user?.name || user?.email?.split('@')[0] || 'Account'}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Link to="/profile" className="flex w-full">Profile</Link>
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="flex w-full items-center">
+                      <User className="w-4 h-4 mr-2" /> Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="flex w-full items-center">
+                      <LayoutDashboard className="w-4 h-4 mr-2" /> Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/study" className="flex w-full items-center">
+                      <BookOpen className="w-4 h-4 mr-2" /> Study
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" /> Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -116,15 +136,16 @@ const Navbar = () => {
         <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg animate-slide-down">
           <nav className="container mx-auto px-4 py-4 flex flex-col space-y-3">
             <MobileNavItem to="/" label="Home" currentPath={location.pathname} />
-            <MobileNavItem to="/study" label="Study" currentPath={location.pathname} />
             
             {isAuthenticated ? (
               <>
+                <MobileNavItem to="/dashboard" label="Dashboard" currentPath={location.pathname} />
+                <MobileNavItem to="/study" label="Study" currentPath={location.pathname} />
                 <MobileNavItem to="/profile" label="Profile" currentPath={location.pathname} />
                 <div className="pt-2">
                   <Button 
                     variant="outline" 
-                    className="w-full rounded-lg justify-center" 
+                    className="w-full rounded-lg justify-center text-red-500 border-red-200" 
                     onClick={handleLogout}
                   >
                     <LogOut className="w-4 h-4 mr-2" /> Logout

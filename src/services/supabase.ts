@@ -1,10 +1,24 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Flashcard } from "@/types/flashcard";
+import { Provider } from "@supabase/supabase-js";
 
 export const signIn = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
+  });
+  
+  if (error) throw error;
+  return data;
+};
+
+export const signInWithOAuth = async (provider: Provider) => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: `${window.location.origin}/dashboard`,
+    },
   });
   
   if (error) throw error;

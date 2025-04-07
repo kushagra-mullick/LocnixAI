@@ -1,9 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut, getSession } from '@/services/supabase';
+import { signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut, getSession, signInWithOAuth } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Session } from '@supabase/supabase-js';
+import { Session, Provider } from '@supabase/supabase-js';
 
 // Define the shape of our user object
 type AuthUser = {
@@ -17,6 +17,7 @@ type AuthContextType = {
   user: AuthUser;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithOAuth: (provider: Provider) => Promise<void>;
   signup: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   login: async () => {},
+  loginWithOAuth: async () => {},
   signup: async () => {},
   logout: async () => {},
   isLoading: false,
@@ -125,6 +127,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithOAuth = async (provider: Provider) => {
+    try {
+      setIsLoading(true);
+      await signInWithOAuth(provider);
+      // The redirect will happen automatically, so we don't need to do anything else here
+    } catch (error: any) {
+      console.error("Error signing in with OAuth:", error);
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: error.message || "There was a problem logging you in.",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signup = async (email: string, password: string, name?: string) => {
     try {
       setIsLoading(true);
@@ -172,7 +192,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, signup, logout, isLoading, session }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isAuthenticated, 
+      login, 
+      loginWithOAuth,
+      signup, 
+      logout, 
+      isLoading, 
+      session 
+    }}>
       {children}
     </AuthContext.Provider>
   );
