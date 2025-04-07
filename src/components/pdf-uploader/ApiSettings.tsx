@@ -1,11 +1,12 @@
 
 import React from 'react';
-import { Key } from 'lucide-react';
+import { Key, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 
 interface ApiSettingsProps {
   provider: string;
@@ -73,6 +74,11 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     }
   };
 
+  const clearApiKey = () => {
+    localStorage.removeItem('locnix_api_key');
+    setApiKey('');
+  };
+
   return (
     <>
       <div className="flex justify-end">
@@ -83,6 +89,11 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
         >
           <Key className="h-4 w-4" />
           {showApiKeyInput ? 'Hide API Settings' : 'API Settings'}
+          {apiKey && !showApiKeyInput && (
+            <Badge variant="success" className="ml-2 flex items-center gap-1 bg-green-500">
+              <Check className="h-3 w-3" /> Saved
+            </Badge>
+          )}
         </Button>
       </div>
       
@@ -130,21 +141,35 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="api-key">
-                  {provider === 'openai' ? 'OpenAI API Key' : 
-                   provider === 'anthropic' ? 'Anthropic API Key' : 
-                   provider === 'perplexity' ? 'Perplexity API Key' : 
-                   'Google API Key'}
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="api-key">
+                    {provider === 'openai' ? 'OpenAI API Key' : 
+                     provider === 'anthropic' ? 'Anthropic API Key' : 
+                     provider === 'perplexity' ? 'Perplexity API Key' : 
+                     'Google API Key'}
+                  </Label>
+                  {apiKey && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={clearApiKey}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Clear saved key
+                    </Button>
+                  )}
+                </div>
                 <Input 
                   id="api-key"
                   type="password"
-                  placeholder={`Enter your ${provider} API key`}
-                  value={apiKey}
+                  placeholder={apiKey ? '••••••••••••••••••••••••••' : `Enter your ${provider} API key`}
+                  value={apiKey ? (apiKey.startsWith('saved:') ? '' : apiKey) : ''}
                   onChange={(e) => setApiKey(e.target.value)}
                 />
                 <p className="text-xs text-gray-500">
-                  Your API key is only used for this request and not stored.
+                  {apiKey 
+                    ? "Your API key is securely saved in your browser. You won't need to enter it again."
+                    : "Your API key will be securely saved in your browser for future use."}
                 </p>
               </div>
             </>

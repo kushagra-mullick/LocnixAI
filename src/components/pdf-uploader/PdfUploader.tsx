@@ -45,6 +45,13 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setError
   );
 
+  // Show API settings if no API key is saved
+  useEffect(() => {
+    if (!localStorage.getItem('locnix_api_key') && !useSimulationMode) {
+      setShowApiKeyInput(true);
+    }
+  }, []);
+
   // Clean up URL when component unmounts
   useEffect(() => {
     return () => {

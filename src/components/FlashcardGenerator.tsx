@@ -1,14 +1,14 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowRightCircle, Brain, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowRightCircle, Brain, Loader2, AlertCircle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 interface GeneratedFlashcard {
   id: string;
@@ -30,6 +30,24 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   const [selectedProvider, setSelectedProvider] = useState<'openai' | 'anthropic' | 'perplexity' | 'gemini'>('openai');
   const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
   const { toast } = useToast();
+  
+  // Load saved API settings from localStorage on component mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('locnix_api_key');
+    const savedProvider = localStorage.getItem('locnix_provider');
+    const savedModel = localStorage.getItem('locnix_model');
+    
+    if (savedApiKey) setApiKey(savedApiKey);
+    if (savedProvider) setSelectedProvider(savedProvider as any);
+    if (savedModel) setSelectedModel(savedModel);
+  }, []);
+  
+  // Save API settings to localStorage whenever they change
+  useEffect(() => {
+    if (apiKey) localStorage.setItem('locnix_api_key', apiKey);
+    localStorage.setItem('locnix_provider', selectedProvider);
+    localStorage.setItem('locnix_model', selectedModel);
+  }, [apiKey, selectedProvider, selectedModel]);
   
   const generateFlashcards = async () => {
     if (!inputText.trim()) {
@@ -509,6 +527,11 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         break;
     }
   }, [selectedProvider]);
+
+  const clearApiKey = () => {
+    localStorage.removeItem('locnix_api_key');
+    setApiKey('');
+  };
   
   return (
     <Card className="glass-card w-full max-w-3xl mx-auto p-6 md:p-8">
@@ -571,24 +594,42 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         
         {/* API Key input with better explanation */}
         <div className="text-sm">
-          <label htmlFor="api-key" className="block mb-1 text-gray-700 dark:text-gray-300">
-            API Key for {selectedProvider === 'openai' ? 'OpenAI' : 
-                        selectedProvider === 'anthropic' ? 'Anthropic' : 
-                        selectedProvider === 'perplexity' ? 'Perplexity' : 'Google Gemini'}
-          </label>
-          <input
-            id="api-key"
-            type="password"
-            placeholder="Enter your API key"
-            className="w-full px-3 py-2 border rounded-md text-sm"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="api-key" className="block text-gray-700 dark:text-gray-300">
+              API Key for {selectedProvider === 'openai' ? 'OpenAI' : 
+                          selectedProvider === 'anthropic' ? 'Anthropic' : 
+                          selectedProvider === 'perplexity' ? 'Perplexity' : 'Google Gemini'}
+            </label>
+            {apiKey && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearApiKey}
+                className="text-xs text-red-500 hover:text-red-700"
+              >
+                Clear saved key
+              </Button>
+            )}
+          </div>
+          <div className="relative">
+            <input
+              id="api-key"
+              type="password"
+              placeholder={apiKey ? '••••••••••••••••••••••••••' : "Enter your API key"}
+              className="w-full px-3 py-2 border rounded-md text-sm"
+              value={apiKey ? (apiKey.startsWith('saved:') ? '' : apiKey) : ''}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            {apiKey && (
+              <Badge className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-green-500 text-white">
+                <Check className="h-3 w-3 mr-1" /> Saved
+              </Badge>
+            )}
+          </div>
           <p className="mt-1 text-xs text-gray-500">
-            {apiKey ? `API key provided - will use ${selectedProvider === 'openai' ? 'OpenAI' : 
-                      selectedProvider === 'anthropic' ? 'Anthropic Claude' : 
-                      selectedProvider === 'perplexity' ? 'Perplexity' : 'Google Gemini'} for generation` : 
-                      "Without an API key, we'll use AI simulation mode"}
+            {apiKey 
+              ? `Your ${selectedProvider} API key is saved. You won't need to enter it again.` 
+              : "Enter your API key once, and we'll save it for future use."}
           </p>
         </div>
         
