@@ -79,6 +79,14 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     setApiKey('');
   };
 
+  const saveApiKey = () => {
+    if (apiKey && apiKey.trim() !== '') {
+      localStorage.setItem('locnix_api_key', apiKey);
+      localStorage.setItem('locnix_provider', provider);
+      localStorage.setItem('locnix_model', model);
+    }
+  };
+
   return (
     <>
       <div className="flex justify-end">
@@ -165,6 +173,7 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
                   placeholder={apiKey ? '••••••••••••••••••••••••••' : `Enter your ${provider} API key`}
                   value={apiKey ? (apiKey.startsWith('saved:') ? '' : apiKey) : ''}
                   onChange={(e) => setApiKey(e.target.value)}
+                  onBlur={saveApiKey}
                 />
                 <p className="text-xs text-gray-500">
                   {apiKey 
@@ -172,6 +181,15 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
                     : "Your API key will be securely saved in your browser for future use."}
                 </p>
               </div>
+              
+              <Button 
+                onClick={saveApiKey} 
+                variant="secondary"
+                size="sm"
+                className="mt-2"
+              >
+                Save API Settings
+              </Button>
             </>
           )}
 

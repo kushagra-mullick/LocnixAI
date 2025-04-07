@@ -47,19 +47,34 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
 
   // Show API settings if no API key is saved
   useEffect(() => {
-    if (!localStorage.getItem('locnix_api_key') && !useSimulationMode) {
+    const savedApiKey = localStorage.getItem('locnix_api_key');
+    if (!savedApiKey && !useSimulationMode) {
       setShowApiKeyInput(true);
     }
-  }, []);
+  }, [useSimulationMode]);
 
   // Clean up URL when component unmounts
   useEffect(() => {
     return () => {
       cleanup();
     };
-  }, []);
+  }, [cleanup]);
 
   const handleGenerateFlashcards = () => {
+    // Save API settings before processing
+    if (apiKey && !useSimulationMode) {
+      localStorage.setItem('locnix_api_key', apiKey);
+      localStorage.setItem('locnix_provider', provider);
+      localStorage.setItem('locnix_model', model);
+    }
+    
+    console.log("Processing with settings:", { 
+      provider, 
+      model, 
+      apiKeyExists: Boolean(apiKey), 
+      useSimulationMode 
+    });
+    
     processWithLLM(apiKey, provider, model, useSimulationMode);
   };
 

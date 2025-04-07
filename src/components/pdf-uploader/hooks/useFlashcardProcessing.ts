@@ -32,6 +32,7 @@ export const useFlashcardProcessing = (
       return;
     }
     
+    // Check if simulation mode is enabled or if we need an API key
     if (!useSimulationMode && !apiKey.trim()) {
       toast({
         title: "API Key Required",
@@ -49,6 +50,7 @@ export const useFlashcardProcessing = (
       
       if (useSimulationMode) {
         // Use simulation mode - generate mock flashcards
+        console.log("Using simulation mode");
         toast({
           title: "Using Simulation Mode",
           description: "Generating sample flashcards without AI API."
@@ -57,18 +59,23 @@ export const useFlashcardProcessing = (
         flashcards = generateMockFlashcards(extractedText);
       } else {
         // Use actual API based on provider selection
+        console.log(`Processing with ${provider} API using model ${model}`);
         try {
           switch (provider) {
             case 'openai':
+              console.log("Calling OpenAI API");
               flashcards = await processWithOpenAI(apiKey, model, extractedText);
               break;
             case 'anthropic':
+              console.log("Calling Anthropic API");
               flashcards = await processWithAnthropic(apiKey, model, extractedText);
               break;
             case 'perplexity':
+              console.log("Calling Perplexity API");
               flashcards = await processWithPerplexity(apiKey, model, extractedText);
               break;
             case 'gemini':
+              console.log("Calling Gemini API");
               flashcards = await processWithGemini(apiKey, model, extractedText);
               break;
             default:
@@ -76,7 +83,7 @@ export const useFlashcardProcessing = (
           }
         } catch (apiError) {
           console.error(`Error with ${provider} API:`, apiError);
-          throw new Error(`${provider} API Error: ${apiError.message || "Unknown error"}`);
+          throw new Error(`${provider} API Error: ${apiError instanceof Error ? apiError.message : "Unknown error"}`);
         }
       }
       
@@ -108,20 +115,15 @@ export const useFlashcardProcessing = (
       console.error('Error processing PDF with LLM:', processError);
       setError("Error processing: " + (processError instanceof Error ? processError.message : "Unknown error"));
       
-      // Fall back to simulation mode if API fails
-      if (!useSimulationMode) {
+      // Only fall back to simulation mode if explicitly requested, not automatically
+      if (useSimulationMode) {
         try {
-          toast({
-            title: "API processing failed",
-            description: "Falling back to simulation mode to generate sample flashcards.",
-            variant: "destructive"
-          });
-          
+          console.log("Already in simulation mode, but had an error. Retrying simulation.");
           const mockFlashcards = generateMockFlashcards(extractedText);
           onExtractComplete(mockFlashcards);
           toast({
-            title: "Fallback to simulation mode",
-            description: `Created ${mockFlashcards.length} sample flashcards due to API error.`,
+            title: "Simulation mode",
+            description: `Created ${mockFlashcards.length} sample flashcards.`,
             variant: "default"
           });
         } catch (fallbackError) {
@@ -133,8 +135,8 @@ export const useFlashcardProcessing = (
         }
       } else {
         toast({
-          title: "Processing failed",
-          description: "Failed to generate flashcards from the PDF content.",
+          title: "API processing failed",
+          description: "Failed to process with the AI API. Check your API key and try again, or enable simulation mode.",
           variant: "destructive"
         });
       }
@@ -148,4 +150,3 @@ export const useFlashcardProcessing = (
     processWithLLM
   };
 };
-

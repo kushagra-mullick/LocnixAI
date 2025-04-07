@@ -37,16 +37,34 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
     const savedProvider = localStorage.getItem('locnix_provider');
     const savedModel = localStorage.getItem('locnix_model');
     
-    if (savedApiKey) setApiKey(savedApiKey);
-    if (savedProvider) setSelectedProvider(savedProvider as any);
-    if (savedModel) setSelectedModel(savedModel);
+    if (savedApiKey) {
+      console.log("Found saved API key");
+      setApiKey(savedApiKey);
+    }
+    if (savedProvider) {
+      console.log(`Found saved provider: ${savedProvider}`);
+      setSelectedProvider(savedProvider as any);
+    }
+    if (savedModel) {
+      console.log(`Found saved model: ${savedModel}`);
+      setSelectedModel(savedModel);
+    }
   }, []);
   
   // Save API settings to localStorage whenever they change
   useEffect(() => {
-    if (apiKey) localStorage.setItem('locnix_api_key', apiKey);
-    localStorage.setItem('locnix_provider', selectedProvider);
-    localStorage.setItem('locnix_model', selectedModel);
+    if (apiKey) {
+      localStorage.setItem('locnix_api_key', apiKey);
+      console.log("Saved API key to localStorage");
+    }
+    if (selectedProvider) {
+      localStorage.setItem('locnix_provider', selectedProvider);
+      console.log(`Saved provider to localStorage: ${selectedProvider}`);
+    }
+    if (selectedModel) {
+      localStorage.setItem('locnix_model', selectedModel);
+      console.log(`Saved model to localStorage: ${selectedModel}`);
+    }
   }, [apiKey, selectedProvider, selectedModel]);
   
   const generateFlashcards = async () => {
@@ -72,10 +90,12 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         });
       }, 100);
       
-      // Determine which API to use
+      // Check if API key is available
+      const shouldUseSimulation = !apiKey || apiKey.trim() === '';
       let flashcardsData;
       
-      if (!apiKey.trim()) {
+      if (shouldUseSimulation) {
+        console.log("No API key - using simulation mode");
         // Generate mock flashcards if no API key is provided
         clearInterval(progressInterval);
         setGenerationProgress(100);
@@ -92,54 +112,69 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
           description: "No valid API key provided. Generated simulated flashcards instead."
         });
         
+        setIsGenerating(false);
+        setInputText('');
         return;
       }
       
+      console.log(`Using ${selectedProvider} API with model ${selectedModel}`);
+      
       // Make API call based on selected provider
-      switch (selectedProvider) {
-        case 'openai':
-          flashcardsData = await generateWithOpenAI(inputText);
-          break;
-        case 'anthropic':
-          flashcardsData = await generateWithAnthropic(inputText);
-          break;
-        case 'perplexity':
-          flashcardsData = await generateWithPerplexity(inputText);
-          break;
-        case 'gemini':
-          flashcardsData = await generateWithGemini(inputText);
-          break;
-        default:
-          flashcardsData = generateMockFlashcards(inputText);
+      try {
+        switch (selectedProvider) {
+          case 'openai':
+            flashcardsData = await generateWithOpenAI(inputText);
+            break;
+          case 'anthropic':
+            flashcardsData = await generateWithAnthropic(inputText);
+            break;
+          case 'perplexity':
+            flashcardsData = await generateWithPerplexity(inputText);
+            break;
+          case 'gemini':
+            flashcardsData = await generateWithGemini(inputText);
+            break;
+          default:
+            console.error("Invalid provider, falling back to simulation");
+            flashcardsData = generateMockFlashcards(inputText);
+        }
+      
+        clearInterval(progressInterval);
+        setGenerationProgress(100);
+        
+        if (onFlashcardsGenerated) {
+          onFlashcardsGenerated(flashcardsData);
+        }
+        
+        toast({
+          title: "Flashcards generated",
+          description: `Successfully created ${flashcardsData.length} flashcards.`
+        });
+      } catch (apiError) {
+        console.error('API error:', apiError);
+        clearInterval(progressInterval);
+        
+        setApiError(apiError instanceof Error ? apiError.message : "Unknown API error");
+        
+        // Only fall back to simulation if there was an actual API error
+        console.log("API error - falling back to simulation mode");
+        const mockFlashcards = generateMockFlashcards(inputText);
+        
+        if (onFlashcardsGenerated) {
+          onFlashcardsGenerated(mockFlashcards);
+        }
+        
+        toast({
+          title: "API Error",
+          description: "Error with AI provider. Used simulation mode as fallback.",
+          variant: "destructive"
+        });
       }
-      
-      clearInterval(progressInterval);
-      setGenerationProgress(100);
-      
-      if (onFlashcardsGenerated) {
-        onFlashcardsGenerated(flashcardsData);
-      }
-      
-      toast({
-        title: "Flashcards generated",
-        description: `Successfully created ${flashcardsData.length} flashcards.`
-      });
-      
     } catch (error) {
-      console.error('Error generating flashcards:', error);
+      console.error('General error:', error);
       
-      // If there was an API error, generate mock flashcards as a fallback
-      const mockFlashcards = generateMockFlashcards(inputText);
-      
-      if (onFlashcardsGenerated) {
-        onFlashcardsGenerated(mockFlashcards);
-      }
-      
-      toast({
-        title: "Generation fallback",
-        description: "Switched to AI simulation mode due to API issues.",
-        variant: "destructive"
-      });
+      // General error handler
+      setApiError(error instanceof Error ? error.message : "Unknown error");
     } finally {
       setIsGenerating(false);
       setInputText('');
