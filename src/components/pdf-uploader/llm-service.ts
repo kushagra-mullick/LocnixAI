@@ -1,8 +1,5 @@
 
-import { processWithOpenAI } from './services/openai-service';
-import { processWithAnthropic } from './services/anthropic-service';
-import { processWithPerplexity } from './services/perplexity-service';
-import { processWithGemini } from './services/gemini-service';
+import { generateFlashcardsWithAPI } from './services/flashcard-generator-service';
 import { generateMockFlashcards } from './services/mock-service';
 
 export interface LlmServiceProps {
@@ -12,10 +9,8 @@ export interface LlmServiceProps {
   extractedText: string;
 }
 
+// Re-export the functions for backward compatibility
 export {
-  processWithOpenAI,
-  processWithAnthropic,
-  processWithPerplexity,
-  processWithGemini,
+  generateFlashcardsWithAPI,
   generateMockFlashcards
 };

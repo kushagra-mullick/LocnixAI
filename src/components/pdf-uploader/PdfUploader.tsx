@@ -19,7 +19,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     previewUrl,
     extractedText,
     isLoading,
-    progress,
+    progress: pdfProgress,
     error,
     handleFileChange,
     handleReset,
@@ -39,7 +39,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setUseSimulationMode
   } = useApiSettings();
   
-  const { isProcessing, processWithLLM } = useFlashcardProcessing(
+  const { isProcessing, progress: processingProgress, processWithLLM } = useFlashcardProcessing(
     extractedText,
     onExtractComplete,
     setError
@@ -66,6 +66,9 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     
     processWithLLM(apiKey, provider, model, useSimulationMode);
   };
+
+  // Determine which progress to display
+  const displayProgress = isProcessing ? processingProgress : pdfProgress;
 
   return (
     <div className="flex flex-col space-y-4 w-full">
@@ -101,7 +104,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
           isLoading={isLoading}
           extractedText={extractedText}
           error={error}
-          progress={progress}
+          progress={displayProgress}
           isProcessing={isProcessing}
           onGenerateFlashcards={handleGenerateFlashcards}
           apiKey={apiKey}

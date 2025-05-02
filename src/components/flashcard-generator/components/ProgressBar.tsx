@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface ProgressBarProps {
   isGenerating: boolean;
@@ -12,14 +12,12 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ isGenerating, progress }) => 
   
   return (
     <div className="w-full mt-2">
-      <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <Progress 
+        value={progress}
+        className="h-1.5"
+      />
       <p className="text-sm text-gray-500 mt-1 text-center">
-        Analyzing content and generating smart flashcards...
+        Analyzing content and generating smart flashcards... {Math.round(progress)}%
       </p>
     </div>
   );

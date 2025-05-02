@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 interface PdfViewerProps {
   previewUrl: string | null;
@@ -48,18 +49,14 @@ const PdfViewer: React.FC<PdfViewerProps> = ({
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <div className="w-full max-w-xs bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
-                <div 
-                  className="bg-primary h-2.5 rounded-full" 
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
+              <Progress value={progress} className="w-full max-w-xs h-2 mb-2" />
               <p className="text-sm text-gray-500">Loading PDF: {progress}%</p>
             </div>
           ) : extractedText ? (
             <TextContent 
               extractedText={extractedText}
               isProcessing={isProcessing}
+              progress={progress}
               onGenerateFlashcards={onGenerateFlashcards}
               apiKey={apiKey}
               provider={provider}
@@ -79,6 +76,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({
 interface TextContentProps {
   extractedText: string;
   isProcessing: boolean;
+  progress: number;
   onGenerateFlashcards: () => void;
   apiKey: string;
   provider: string;
@@ -88,6 +86,7 @@ interface TextContentProps {
 const TextContent: React.FC<TextContentProps> = ({
   extractedText,
   isProcessing,
+  progress,
   onGenerateFlashcards,
   apiKey,
   provider,
@@ -97,8 +96,17 @@ const TextContent: React.FC<TextContentProps> = ({
     <div>
       <h3 className="font-medium mb-2">PDF Content Status</h3>
       <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-        {extractedText}
+        {extractedText.length > 300 ? extractedText.substring(0, 300) + '...' : extractedText}
       </p>
+      
+      {isProcessing && (
+        <div className="mb-4">
+          <Progress value={progress} className="h-2 mb-2" />
+          <p className="text-sm text-center text-gray-500">
+            Analyzing content and generating flashcards: {Math.round(progress)}%
+          </p>
+        </div>
+      )}
       
       <GenerateFlashcardsButton 
         isProcessing={isProcessing}
@@ -109,10 +117,10 @@ const TextContent: React.FC<TextContentProps> = ({
       
       {!apiKey.trim() && !showApiKeyInput && (
         <p className="text-xs text-amber-600 mt-2">
-          Please enter your {provider === 'openai' ? 'OpenAI' : 
+          Using pre-configured API key for {provider === 'openai' ? 'OpenAI' : 
                            provider === 'anthropic' ? 'Anthropic' : 
                            provider === 'perplexity' ? 'Perplexity' : 
-                           'Google'} API key in API Settings to continue.
+                           'Google'}.
         </p>
       )}
     </div>
@@ -135,7 +143,7 @@ const GenerateFlashcardsButton: React.FC<GenerateFlashcardsButtonProps> = ({
   return (
     <Button 
       onClick={onGenerateFlashcards}
-      disabled={isProcessing || !apiKey.trim()}
+      disabled={isProcessing}
       className="w-full gap-2 mt-4"
     >
       {isProcessing ? (

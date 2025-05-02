@@ -1,14 +1,9 @@
 
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  processWithOpenAI, 
-  processWithAnthropic, 
-  processWithPerplexity, 
-  processWithGemini,
-  generateMockFlashcards
-} from '../llm-service';
 import { API_CONFIGURATION } from '../services/api-config';
+import { generateFlashcardsWithAPI } from '../services/flashcard-generator-service';
+import { generateMockFlashcards } from '../services/mock-service';
 
 export const useFlashcardProcessing = (
   extractedText: string, 
@@ -16,6 +11,7 @@ export const useFlashcardProcessing = (
   setError: (error: string | null) => void
 ) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const { toast } = useToast();
 
   const processWithLLM = async (
@@ -36,12 +32,14 @@ export const useFlashcardProcessing = (
     setIsProcessing(true);
     setError(null); // Clear any previous errors
     
+    // Start progress simulation
+    startProgressSimulation();
+    
     try {
       let flashcards = [];
       
       if (useSimulationMode) {
-        // Use simulation mode - generate mock flashcards
-        console.log("Using simulation mode");
+        console.log("Using simulation mode for flashcard generation");
         toast({
           title: "Using Simulation Mode",
           description: "Generating sample flashcards without AI API."
@@ -49,36 +47,16 @@ export const useFlashcardProcessing = (
         
         flashcards = generateMockFlashcards(extractedText);
       } else {
-        // Use actual API based on provider selection
         console.log(`Processing with ${provider} API using model ${model}`);
-        try {
-          // Always use the API key from api-config.ts
-          const effectiveApiKey = apiKey || API_CONFIGURATION.OPENAI_API_KEY;
-          
-          switch (provider) {
-            case 'openai':
-              console.log("Calling OpenAI API");
-              flashcards = await processWithOpenAI(effectiveApiKey, model, extractedText);
-              break;
-            case 'anthropic':
-              console.log("Calling Anthropic API");
-              flashcards = await processWithAnthropic(effectiveApiKey, model, extractedText);
-              break;
-            case 'perplexity':
-              console.log("Calling Perplexity API");
-              flashcards = await processWithPerplexity(effectiveApiKey, model, extractedText);
-              break;
-            case 'gemini':
-              console.log("Calling Gemini API");
-              flashcards = await processWithGemini(effectiveApiKey, model, extractedText);
-              break;
-            default:
-              throw new Error("Unsupported provider");
-          }
-        } catch (apiError) {
-          console.error(`Error with ${provider} API:`, apiError);
-          throw new Error(`${provider} API Error: ${apiError instanceof Error ? apiError.message : "Unknown error"}`);
+        
+        // Always use the API key from api-config.ts
+        const effectiveApiKey = apiKey || API_CONFIGURATION.OPENAI_API_KEY;
+        
+        if (!effectiveApiKey) {
+          throw new Error("No API key available. Please check your configuration.");
         }
+        
+        flashcards = await generateFlashcardsWithAPI(provider, model, effectiveApiKey, extractedText);
       }
       
       if (Array.isArray(flashcards) && flashcards.length > 0) {
@@ -93,11 +71,17 @@ export const useFlashcardProcessing = (
         }));
         
         if (validFlashcards.length > 0) {
-          onExtractComplete(validFlashcards);
-          toast({
-            title: "Flashcards created",
-            description: `Successfully created ${validFlashcards.length} flashcards from your PDF.`
-          });
+          // Complete the progress bar
+          setProgress(100);
+          
+          // Short delay to show completed progress before updating UI
+          setTimeout(() => {
+            onExtractComplete(validFlashcards);
+            toast({
+              title: "Flashcards created",
+              description: `Successfully created ${validFlashcards.length} flashcards from your PDF.`
+            });
+          }, 500);
           return;
         } else {
           throw new Error("Failed to create valid flashcards. The AI response was malformed.");
@@ -138,9 +122,31 @@ export const useFlashcardProcessing = (
       setIsProcessing(false);
     }
   };
+  
+  // Simulate progress while API or mock processing is happening
+  const startProgressSimulation = () => {
+    setProgress(0);
+    const interval = setInterval(() => {
+      setProgress(prevProgress => {
+        // Gradually increase progress, slowing down as it approaches 90%
+        const increment = Math.max(1, 10 * (1 - prevProgress / 100));
+        const newProgress = Math.min(90, prevProgress + increment);
+        
+        if (newProgress >= 90) {
+          clearInterval(interval);
+        }
+        
+        return newProgress;
+      });
+    }, 300);
+    
+    // Clear interval after 30 seconds as a failsafe
+    setTimeout(() => clearInterval(interval), 30000);
+  };
 
   return {
     isProcessing,
+    progress,
     processWithLLM
   };
 };
