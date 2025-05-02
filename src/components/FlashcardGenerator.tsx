@@ -3,12 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowRightCircle, Brain, Loader2, AlertCircle, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowRightCircle, Brain, Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { API_CONFIGURATION } from './pdf-uploader/services/api-config';
 
 interface GeneratedFlashcard {
   id: string;
@@ -17,15 +17,10 @@ interface GeneratedFlashcard {
   category: string;
 }
 
-interface FlashcardGeneratorProps {
-  onFlashcardsGenerated?: (flashcards: GeneratedFlashcard[]) => void;
-}
-
-const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) => {
+const FlashcardGenerator = ({ onFlashcardsGenerated }: { onFlashcardsGenerated?: (flashcards: any[]) => void }) => {
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
-  const [apiKey, setApiKey] = useState('');
   const [apiError, setApiError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<'openai' | 'anthropic' | 'perplexity' | 'gemini'>('openai');
   const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
@@ -33,14 +28,9 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   
   // Load saved API settings from localStorage on component mount
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('locnix_api_key');
     const savedProvider = localStorage.getItem('locnix_provider');
     const savedModel = localStorage.getItem('locnix_model');
     
-    if (savedApiKey) {
-      console.log("Found saved API key");
-      setApiKey(savedApiKey);
-    }
     if (savedProvider) {
       console.log(`Found saved provider: ${savedProvider}`);
       setSelectedProvider(savedProvider as any);
@@ -53,10 +43,6 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   
   // Save API settings to localStorage whenever they change
   useEffect(() => {
-    if (apiKey) {
-      localStorage.setItem('locnix_api_key', apiKey);
-      console.log("Saved API key to localStorage");
-    }
     if (selectedProvider) {
       localStorage.setItem('locnix_provider', selectedProvider);
       console.log(`Saved provider to localStorage: ${selectedProvider}`);
@@ -65,7 +51,7 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
       localStorage.setItem('locnix_model', selectedModel);
       console.log(`Saved model to localStorage: ${selectedModel}`);
     }
-  }, [apiKey, selectedProvider, selectedModel]);
+  }, [selectedProvider, selectedModel]);
   
   const generateFlashcards = async () => {
     if (!inputText.trim()) {
@@ -90,13 +76,12 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         });
       }, 100);
       
-      // Check if API key is available
-      const shouldUseSimulation = !apiKey || apiKey.trim() === '';
       let flashcardsData;
+      const useSimulation = API_CONFIGURATION.useSimulationMode;
       
-      if (shouldUseSimulation) {
-        console.log("No API key - using simulation mode");
-        // Generate mock flashcards if no API key is provided
+      if (useSimulation) {
+        console.log("Using simulation mode");
+        // Generate mock flashcards if simulation mode is enabled
         clearInterval(progressInterval);
         setGenerationProgress(100);
         
@@ -109,7 +94,7 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         
         toast({
           title: "Using AI simulation",
-          description: "No valid API key provided. Generated simulated flashcards instead."
+          description: "Generated simulated flashcards."
         });
         
         setIsGenerating(false);
@@ -121,6 +106,9 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
       
       // Make API call based on selected provider
       try {
+        // Use the centrally configured API key
+        const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
+        
         switch (selectedProvider) {
           case 'openai':
             flashcardsData = await generateWithOpenAI(inputText);
@@ -156,7 +144,7 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         
         setApiError(apiError instanceof Error ? apiError.message : "Unknown API error");
         
-        // Only fall back to simulation if there was an actual API error
+        // Fall back to simulation if there was an API error
         console.log("API error - falling back to simulation mode");
         const mockFlashcards = generateMockFlashcards(inputText);
         
@@ -183,6 +171,9 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   
   // Generate flashcards using OpenAI
   const generateWithOpenAI = async (text: string): Promise<GeneratedFlashcard[]> => {
+    // Get the API key from central configuration
+    const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
+    
     // Define the prompt for the OpenAI
     const prompt = `
       Create flashcards from the following text. 
@@ -256,6 +247,9 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   
   // Generate flashcards using Anthropic Claude
   const generateWithAnthropic = async (text: string): Promise<GeneratedFlashcard[]> => {
+    // Get the API key from central configuration
+    const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
+    
     const prompt = `
       Create flashcards from the following text. 
       For each important concept or fact, create a flashcard with a question on the front and answer on the back.
@@ -324,6 +318,9 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   
   // Generate flashcards using Perplexity
   const generateWithPerplexity = async (text: string): Promise<GeneratedFlashcard[]> => {
+    // Get the API key from central configuration
+    const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
+    
     const prompt = `
       Create flashcards from the following text. 
       For each important concept or fact, create a flashcard with a question on the front and answer on the back.
@@ -397,6 +394,9 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
   
   // Generate flashcards using Google Gemini
   const generateWithGemini = async (text: string): Promise<GeneratedFlashcard[]> => {
+    // Get the API key from central configuration
+    const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
+    
     const prompt = `
       Create flashcards from the following text. 
       For each important concept or fact, create a flashcard with a question on the front and answer on the back.
@@ -562,11 +562,6 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         break;
     }
   }, [selectedProvider]);
-
-  const clearApiKey = () => {
-    localStorage.removeItem('locnix_api_key');
-    setApiKey('');
-  };
   
   return (
     <Card className="glass-card w-full max-w-3xl mx-auto p-6 md:p-8">
@@ -574,6 +569,7 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
         <div className="flex items-center gap-2 text-primary font-semibold">
           <Brain className="h-5 w-5" />
           <h3 className="text-xl">AI Flashcard Generator</h3>
+          <Badge className="ml-2 bg-green-500 text-white">API Ready</Badge>
         </div>
         
         {apiError && (
@@ -627,44 +623,9 @@ const FlashcardGenerator = ({ onFlashcardsGenerated }: FlashcardGeneratorProps) 
           </div>
         </div>
         
-        {/* API Key input with better explanation */}
-        <div className="text-sm">
-          <div className="flex items-center justify-between mb-1">
-            <label htmlFor="api-key" className="block text-gray-700 dark:text-gray-300">
-              API Key for {selectedProvider === 'openai' ? 'OpenAI' : 
-                          selectedProvider === 'anthropic' ? 'Anthropic' : 
-                          selectedProvider === 'perplexity' ? 'Perplexity' : 'Google Gemini'}
-            </label>
-            {apiKey && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={clearApiKey}
-                className="text-xs text-red-500 hover:text-red-700"
-              >
-                Clear saved key
-              </Button>
-            )}
-          </div>
-          <div className="relative">
-            <input
-              id="api-key"
-              type="password"
-              placeholder={apiKey ? '••••••••••••••••••••••••••' : "Enter your API key"}
-              className="w-full px-3 py-2 border rounded-md text-sm"
-              value={apiKey ? (apiKey.startsWith('saved:') ? '' : apiKey) : ''}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-            {apiKey && (
-              <Badge className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-green-500 text-white">
-                <Check className="h-3 w-3 mr-1" /> Saved
-              </Badge>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-gray-500">
-            {apiKey 
-              ? `Your ${selectedProvider} API key is saved. You won't need to enter it again.` 
-              : "Enter your API key once, and we'll save it for future use."}
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+          <p className="text-sm">
+            API Key is pre-configured. You can generate flashcards without needing to enter an API key.
           </p>
         </div>
         

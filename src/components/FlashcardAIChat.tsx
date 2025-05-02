@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea component
+import { API_CONFIGURATION } from './pdf-uploader/services/api-config';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -44,7 +45,6 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isApiDialogOpen, setIsApiDialogOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<'openai' | 'anthropic' | 'perplexity' | 'gemini'>('openai');
-  const [apiKey, setApiKey] = useState('');
   const [apiModel, setApiModel] = useState('gpt-4o-mini');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -72,8 +72,11 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
     try {
       let response: any;
       
-      if (!apiKey) {
-        // Simulate AI response if no API key
+      // Use the API key from the central configuration
+      const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
+      
+      if (API_CONFIGURATION.useSimulationMode) {
+        // Simulate AI response if simulation mode is enabled
         response = await simulateAIResponse(userMessage.content, messages);
       } else {
         // Use the selected AI service with the provided API key
@@ -166,6 +169,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         content: `You are an AI assistant specialized in helping users learn with flashcards. Here are some of the user's flashcards for context:\n\n${flashcardContext}\n\nThe user has a total of ${flashcards.length} flashcards. Provide helpful, educational responses about the content in these flashcards or about learning strategies.`
       };
       
+      const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -210,6 +214,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         content: msg.content
       }));
       
+      const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -254,6 +259,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         content: `You are an AI assistant specialized in helping users learn with flashcards. Here are some of the user's flashcards for context:\n\n${flashcardContext}\n\nThe user has a total of ${flashcards.length} flashcards. Provide helpful, educational responses about the content in these flashcards or about learning strategies.`
       };
       
+      const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
@@ -296,6 +302,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         content: `You are an AI assistant specialized in helping users learn with flashcards. Here are some of the user's flashcards for context:\n\n${flashcardContext}\n\nThe user has a total of ${flashcards.length} flashcards.`
         }
       
+      const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + apiKey, {
         method: 'POST',
         headers: {
@@ -353,7 +360,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsApiDialogOpen(true)}>
             <Settings className="h-4 w-4 mr-2" />
-            API Settings
+            AI Settings
           </Button>
           
           {onClose && (
@@ -425,7 +432,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         </div>
       </div>
       
-      {/* API Settings Dialog */}
+      {/* API Settings Dialog - modified to remove API key input */}
       <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -453,6 +460,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
               </Select>
             </div>
             
+            {/* Model selection based on provider */}
             {selectedModel === 'openai' && (
               <div className="space-y-2">
                 <Label htmlFor="openai-model">OpenAI Model</Label>
@@ -510,17 +518,26 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
               </div>
             )}
             
-            <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
-              <Input
-                id="api-key"
-                type="password"
-                placeholder="Enter your API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-              />
-              <p className="text-xs text-gray-500">
-                {apiKey ? "API key provided - will use the selected AI service" : "Without an API key, we'll use simulation mode"}
+            {selectedModel === 'gemini' && (
+              <div className="space-y-2">
+                <Label htmlFor="gemini-model">Gemini Model</Label>
+                <Select 
+                  value={apiModel} 
+                  onValueChange={setApiModel}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+              <p className="text-sm">
+                API key is pre-configured. You can use the AI chat assistant without needing to enter an API key.
               </p>
             </div>
           </div>

@@ -1,7 +1,6 @@
 
 import React from 'react';
-import { Key, Check } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Settings } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,10 +12,8 @@ interface ApiSettingsProps {
   setProvider: (provider: string) => void;
   model: string;
   setModel: (model: string) => void;
-  apiKey: string;
-  setApiKey: (apiKey: string) => void;
-  showApiKeyInput: boolean;
-  setShowApiKeyInput: (show: boolean) => void;
+  showAdvancedSettings: boolean;
+  setShowAdvancedSettings: (show: boolean) => void;
   useSimulationMode: boolean;
   setUseSimulationMode: (use: boolean) => void;
 }
@@ -26,10 +23,8 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
   setProvider,
   model,
   setModel,
-  apiKey,
-  setApiKey,
-  showApiKeyInput,
-  setShowApiKeyInput,
+  showAdvancedSettings,
+  setShowAdvancedSettings,
   useSimulationMode,
   setUseSimulationMode
 }) => {
@@ -65,8 +60,8 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
           <>
             <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
             <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-            <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash (Free)</SelectItem>
-            <SelectItem value="gemini-pro-vision">Gemini Pro Vision (Free)</SelectItem>
+            <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+            <SelectItem value="gemini-pro-vision">Gemini Pro Vision</SelectItem>
           </>
         );
       default:
@@ -74,38 +69,23 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     }
   };
 
-  const clearApiKey = () => {
-    localStorage.removeItem('locnix_api_key');
-    setApiKey('');
-  };
-
-  const saveApiKey = () => {
-    if (apiKey && apiKey.trim() !== '') {
-      localStorage.setItem('locnix_api_key', apiKey);
-      localStorage.setItem('locnix_provider', provider);
-      localStorage.setItem('locnix_model', model);
-    }
-  };
-
   return (
     <>
       <div className="flex justify-end">
         <Button 
-          onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+          onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
           variant="outline"
           className="gap-2"
         >
-          <Key className="h-4 w-4" />
-          {showApiKeyInput ? 'Hide API Settings' : 'API Settings'}
-          {apiKey && !showApiKeyInput && (
-            <Badge variant="secondary" className="ml-2 flex items-center gap-1 bg-green-500 text-white">
-              <Check className="h-3 w-3" /> Saved
-            </Badge>
-          )}
+          <Settings className="h-4 w-4" />
+          {showAdvancedSettings ? 'Hide AI Settings' : 'AI Settings'}
+          <Badge variant="secondary" className="ml-2 flex items-center gap-1 bg-green-500 text-white">
+            API Ready
+          </Badge>
         </Button>
       </div>
       
-      {showApiKeyInput && (
+      {showAdvancedSettings && (
         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md space-y-4 border">
           <div className="flex items-center space-x-2">
             <Switch 
@@ -113,7 +93,7 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
               checked={useSimulationMode}
               onCheckedChange={setUseSimulationMode}
             />
-            <Label htmlFor="simulation-mode">Use AI Simulation (No API Key Required)</Label>
+            <Label htmlFor="simulation-mode">Use AI Simulation (Save API Credits)</Label>
           </div>
           
           {!useSimulationMode && (
@@ -148,55 +128,18 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="api-key">
-                    {provider === 'openai' ? 'OpenAI API Key' : 
-                     provider === 'anthropic' ? 'Anthropic API Key' : 
-                     provider === 'perplexity' ? 'Perplexity API Key' : 
-                     'Google API Key'}
-                  </Label>
-                  {apiKey && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={clearApiKey}
-                      className="text-xs text-red-500 hover:text-red-700"
-                    >
-                      Clear saved key
-                    </Button>
-                  )}
-                </div>
-                <Input 
-                  id="api-key"
-                  type="password"
-                  placeholder={apiKey ? '••••••••••••••••••••••••••' : `Enter your ${provider} API key`}
-                  value={apiKey ? (apiKey.startsWith('saved:') ? '' : apiKey) : ''}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  onBlur={saveApiKey}
-                />
-                <p className="text-xs text-gray-500">
-                  {apiKey 
-                    ? "Your API key is securely saved in your browser. You won't need to enter it again."
-                    : "Your API key will be securely saved in your browser for future use."}
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+                <p className="text-sm">
+                  API Key is pre-configured. Users can generate flashcards without needing their own API key.
                 </p>
               </div>
-              
-              <Button 
-                onClick={saveApiKey} 
-                variant="secondary"
-                size="sm"
-                className="mt-2"
-              >
-                Save API Settings
-              </Button>
             </>
           )}
 
           {useSimulationMode && (
             <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
               <p className="text-sm">
-                Simulation Mode is ON. The app will generate sample flashcards without requiring an API key.
+                Simulation Mode is ON. The app will generate sample flashcards without using API credits.
                 While these won't be as high-quality as AI-generated ones, they'll help you test the app's functionality.
               </p>
             </div>

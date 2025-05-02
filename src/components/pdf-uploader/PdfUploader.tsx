@@ -6,6 +6,7 @@ import PdfViewer from './PdfViewer';
 import { usePdfExtraction } from './hooks/usePdfExtraction';
 import { useApiSettings } from './hooks/useApiSettings';
 import { useFlashcardProcessing } from './hooks/useFlashcardProcessing';
+import { API_CONFIGURATION } from './services/api-config';
 
 interface PdfUploaderProps {
   onExtractComplete: (flashcards: any[]) => void;
@@ -28,13 +29,12 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
   
   const {
     apiKey,
-    setApiKey,
     model,
     setModel,
     provider,
     setProvider,
-    showApiKeyInput,
-    setShowApiKeyInput,
+    showAdvancedSettings,
+    setShowAdvancedSettings,
     useSimulationMode,
     setUseSimulationMode
   } = useApiSettings();
@@ -45,14 +45,6 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     setError
   );
 
-  // Show API settings if no API key is saved
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('locnix_api_key');
-    if (!savedApiKey && !useSimulationMode) {
-      setShowApiKeyInput(true);
-    }
-  }, [useSimulationMode]);
-
   // Clean up URL when component unmounts
   useEffect(() => {
     return () => {
@@ -61,12 +53,9 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
   }, [cleanup]);
 
   const handleGenerateFlashcards = () => {
-    // Save API settings before processing
-    if (apiKey && !useSimulationMode) {
-      localStorage.setItem('locnix_api_key', apiKey);
-      localStorage.setItem('locnix_provider', provider);
-      localStorage.setItem('locnix_model', model);
-    }
+    // Save model and provider settings before processing
+    localStorage.setItem('locnix_provider', provider);
+    localStorage.setItem('locnix_model', model);
     
     console.log("Processing with settings:", { 
       provider, 
@@ -93,10 +82,8 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
           setProvider={setProvider}
           model={model}
           setModel={setModel}
-          apiKey={apiKey}
-          setApiKey={setApiKey}
-          showApiKeyInput={showApiKeyInput}
-          setShowApiKeyInput={setShowApiKeyInput}
+          showAdvancedSettings={showAdvancedSettings}
+          setShowAdvancedSettings={setShowAdvancedSettings}
           useSimulationMode={useSimulationMode}
           setUseSimulationMode={setUseSimulationMode}
         />
@@ -119,7 +106,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
           onGenerateFlashcards={handleGenerateFlashcards}
           apiKey={apiKey}
           provider={provider}
-          showApiKeyInput={showApiKeyInput}
+          showApiKeyInput={false}
         />
       )}
     </div>

@@ -1,33 +1,30 @@
 
 import { useState, useEffect } from 'react';
+import { API_CONFIGURATION } from '../services/api-config';
 
 export const useApiSettings = () => {
-  const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('gpt-4o');
-  const [provider, setProvider] = useState('openai');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-  const [useSimulationMode, setUseSimulationMode] = useState(false);
+  const [model, setModel] = useState(API_CONFIGURATION.defaultModel);
+  const [provider, setProvider] = useState(API_CONFIGURATION.defaultProvider);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [useSimulationMode, setUseSimulationMode] = useState(API_CONFIGURATION.useSimulationMode);
 
-  // Load saved settings from localStorage on component mount
+  // Load saved model and provider settings from localStorage on component mount
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('locnix_api_key');
     const savedProvider = localStorage.getItem('locnix_provider');
     const savedModel = localStorage.getItem('locnix_model');
     const savedSimMode = localStorage.getItem('locnix_simulation_mode');
     
-    if (savedApiKey) setApiKey(savedApiKey);
     if (savedProvider) setProvider(savedProvider);
     if (savedModel) setModel(savedModel);
     if (savedSimMode) setUseSimulationMode(savedSimMode === 'true');
   }, []);
 
-  // Save settings to localStorage whenever they change
+  // Save provider and model settings to localStorage whenever they change
   useEffect(() => {
-    if (apiKey) localStorage.setItem('locnix_api_key', apiKey);
     localStorage.setItem('locnix_provider', provider);
     localStorage.setItem('locnix_model', model);
     localStorage.setItem('locnix_simulation_mode', String(useSimulationMode));
-  }, [apiKey, provider, model, useSimulationMode]);
+  }, [provider, model, useSimulationMode]);
 
   // Update default model when provider changes
   useEffect(() => {
@@ -50,14 +47,13 @@ export const useApiSettings = () => {
   }, [provider]);
 
   return {
-    apiKey,
-    setApiKey,
+    apiKey: API_CONFIGURATION.OPENAI_API_KEY,
     model,
     setModel,
     provider,
     setProvider,
-    showApiKeyInput,
-    setShowApiKeyInput,
+    showAdvancedSettings,
+    setShowAdvancedSettings,
     useSimulationMode,
     setUseSimulationMode
   };

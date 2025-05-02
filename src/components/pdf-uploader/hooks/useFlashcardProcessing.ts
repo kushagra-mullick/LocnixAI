@@ -8,6 +8,7 @@ import {
   processWithGemini,
   generateMockFlashcards
 } from '../llm-service';
+import { API_CONFIGURATION } from '../services/api-config';
 
 export const useFlashcardProcessing = (
   extractedText: string, 
@@ -32,16 +33,6 @@ export const useFlashcardProcessing = (
       return;
     }
     
-    // Check if simulation mode is enabled or if we need an API key
-    if (!useSimulationMode && !apiKey.trim()) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your API key or enable Simulation Mode to process the PDF.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setIsProcessing(true);
     setError(null); // Clear any previous errors
     
@@ -61,22 +52,25 @@ export const useFlashcardProcessing = (
         // Use actual API based on provider selection
         console.log(`Processing with ${provider} API using model ${model}`);
         try {
+          // Always use the API key from api-config.ts
+          const effectiveApiKey = apiKey || API_CONFIGURATION.OPENAI_API_KEY;
+          
           switch (provider) {
             case 'openai':
               console.log("Calling OpenAI API");
-              flashcards = await processWithOpenAI(apiKey, model, extractedText);
+              flashcards = await processWithOpenAI(effectiveApiKey, model, extractedText);
               break;
             case 'anthropic':
               console.log("Calling Anthropic API");
-              flashcards = await processWithAnthropic(apiKey, model, extractedText);
+              flashcards = await processWithAnthropic(effectiveApiKey, model, extractedText);
               break;
             case 'perplexity':
               console.log("Calling Perplexity API");
-              flashcards = await processWithPerplexity(apiKey, model, extractedText);
+              flashcards = await processWithPerplexity(effectiveApiKey, model, extractedText);
               break;
             case 'gemini':
               console.log("Calling Gemini API");
-              flashcards = await processWithGemini(apiKey, model, extractedText);
+              flashcards = await processWithGemini(effectiveApiKey, model, extractedText);
               break;
             default:
               throw new Error("Unsupported provider");
@@ -136,7 +130,7 @@ export const useFlashcardProcessing = (
       } else {
         toast({
           title: "API processing failed",
-          description: "Failed to process with the AI API. Check your API key and try again, or enable simulation mode.",
+          description: "Failed to process with the AI API. Please try enabling simulation mode.",
           variant: "destructive"
         });
       }
