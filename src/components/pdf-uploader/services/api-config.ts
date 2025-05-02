@@ -4,7 +4,7 @@
 
 export const API_CONFIGURATION = {
   // Add your API key here
-  OPENAI_API_KEY: "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", // Replace with your actual OpenAI API key
+  OPENAI_API_KEY: "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", // Replace with your actual OpenAI API key
   
   // Default settings
   defaultProvider: "openai",
