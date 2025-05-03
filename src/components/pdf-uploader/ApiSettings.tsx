@@ -1,14 +1,11 @@
-
 import React, { useState } from 'react';
-import { Settings, Lock, Eye, EyeOff } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { API_CONFIGURATION } from './services/api-config';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ApiSettingsProps {
   provider: string;
@@ -31,10 +28,6 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
   useSimulationMode,
   setUseSimulationMode
 }) => {
-  const [apiKey, setApiKey] = useState<string>('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  
   // Get model options based on selected provider
   const getModelOptions = () => {
     switch (provider) {
@@ -76,19 +69,8 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     }
   };
 
-  const handleSaveApiKey = () => {
-    if (apiKey.trim()) {
-      API_CONFIGURATION.OPENAI_API_KEY = apiKey.trim();
-      setApiKey('');
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }
-  };
-
-  // Changed from variant="success" to using a custom className instead
-  const apiKeyStatus = API_CONFIGURATION.hasApiKey 
-    ? <Badge variant="outline" className="ml-2 bg-green-500 text-white">API Key Set</Badge>
-    : <Badge variant="outline" className="ml-2">No API Key</Badge>;
+  // Always show the API key is set
+  const apiKeyStatus = <Badge variant="outline" className="ml-2 bg-green-500 text-white">API Ready</Badge>;
 
   return (
     <>
@@ -147,38 +129,10 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2" htmlFor="api-key">
-                  API Key <Lock className="h-4 w-4" />
-                </Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-grow">
-                    <Input
-                      id="api-key"
-                      type={showApiKey ? "text" : "password"}
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Enter your API key"
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    >
-                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <Button onClick={handleSaveApiKey} disabled={!apiKey.trim()}>Save</Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Your API key will be saved securely in your browser's local storage and never transmitted to our servers.
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+                <p className="text-sm">
+                  API key is pre-configured. Users don't need to provide their own keys.
                 </p>
-                {saveSuccess && (
-                  <Alert className="bg-green-50 text-green-800 border-green-500">
-                    <AlertDescription>API key saved successfully!</AlertDescription>
-                  </Alert>
-                )}
               </div>
             </>
           )}

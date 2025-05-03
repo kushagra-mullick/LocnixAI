@@ -47,7 +47,6 @@ export const useApiSettings = () => {
   }, [provider]);
 
   return {
-    apiKey: API_CONFIGURATION.OPENAI_API_KEY,
     model,
     setModel,
     provider,

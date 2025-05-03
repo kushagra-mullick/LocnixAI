@@ -28,7 +28,6 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
   } = usePdfExtraction();
   
   const {
-    apiKey,
     model,
     setModel,
     provider,
@@ -60,12 +59,12 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     console.log("Processing with settings:", { 
       provider, 
       model, 
-      apiKeyExists: Boolean(apiKey || API_CONFIGURATION.hasApiKey), 
+      apiKeyExists: true, // We always have a preset key
       useSimulationMode 
     });
     
-    // Use API key from config or from state
-    processWithLLM(apiKey || API_CONFIGURATION.OPENAI_API_KEY, provider, model, useSimulationMode);
+    // Always use the preset API key from config
+    processWithLLM(API_CONFIGURATION.OPENAI_API_KEY, provider, model, useSimulationMode);
   };
 
   // Determine which progress to display
@@ -108,9 +107,8 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
           progress={displayProgress}
           isProcessing={isProcessing}
           onGenerateFlashcards={handleGenerateFlashcards}
-          apiKey={apiKey}
           provider={provider}
-          showApiKeyInput={!API_CONFIGURATION.hasApiKey && !useSimulationMode}
+          showApiKeyInput={false} // Never show API key input
         />
       )}
     </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -33,14 +32,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({
   const [showText, setShowText] = useState(false);
 
   const handleGenerate = () => {
-    if (!API_CONFIGURATION.hasApiKey && !showApiKeyInput) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your API key in the AI Settings section before generating flashcards.",
-        variant: "destructive"
-      });
-      return;
-    }
+    // We've removed the API key check since we always have a preset key
     onGenerateFlashcards();
   };
 
