@@ -2,7 +2,7 @@
 // This file provides the hardcoded API key for all users
 
 // Your fixed API key that all users will use
-const CENTRAL_API_KEY = "your-central-api-key-here"; // Replace with your actual API key
+const CENTRAL_API_KEY = "YOUR_OPENAI_API_KEY_HERE"; // Replace with your actual API key before deployment
 
 export const API_CONFIGURATION = {
   // Always return the central API key
