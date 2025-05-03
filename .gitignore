@@ -7,7 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-git rm main/src/components/pdf-uploader/services/api-config.ts
+main/src/components/pdf-uploader/services/api-config.ts
 
 node_modules
 dist
