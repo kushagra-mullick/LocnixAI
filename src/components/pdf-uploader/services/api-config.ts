@@ -2,7 +2,7 @@
 // This file provides the hardcoded API key for all users
 
 // Your fixed API key that all users will use
-const CENTRAL_API_KEY = "YOUR_OPENAI_API_KEY_HERE"; // Replace with your actual API key before deployment
+const CENTRAL_API_KEY = "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";
 
 export const API_CONFIGURATION = {
   // Always return the central API key
