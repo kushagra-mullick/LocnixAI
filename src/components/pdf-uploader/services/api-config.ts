@@ -1,15 +1,43 @@
 
 // Central configuration for API keys and settings
-// This file stores the admin API key instead of requiring user input
+// This file provides fallback configuration while allowing for secure local storage of keys
+
+// Get stored API key from local storage if available
+const getStoredApiKey = (): string | null => {
+  try {
+    return localStorage.getItem('locnix_api_key');
+  } catch (e) {
+    return null;
+  }
+};
+
+// Safe placeholder for API key in the repository
+// IMPORTANT: This will be replaced by the user's stored key if available
+const PLACEHOLDER_API_KEY = "";
 
 export const API_CONFIGURATION = {
-  // Add your API key here
-  OPENAI_API_KEY: "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", // Replace with your actual OpenAI API key
+  // Get API key from local storage or use placeholder (empty string)
+  get OPENAI_API_KEY(): string {
+    return getStoredApiKey() || PLACEHOLDER_API_KEY;
+  },
+  
+  // Set API key in local storage
+  set OPENAI_API_KEY(value: string) {
+    if (value) {
+      localStorage.setItem('locnix_api_key', value);
+    }
+  },
   
   // Default settings
   defaultProvider: "openai",
   defaultModel: "gpt-4o-mini",
   
   // Enable this for development/testing without using API calls
-  useSimulationMode: false
+  useSimulationMode: false,
+  
+  // Check if an API key is configured
+  get hasApiKey(): boolean {
+    return Boolean(getStoredApiKey());
+  }
 };
+

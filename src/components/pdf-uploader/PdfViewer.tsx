@@ -1,19 +1,19 @@
 
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { API_CONFIGURATION } from './services/api-config';
 
 interface PdfViewerProps {
-  previewUrl: string | null;
+  previewUrl: string;
   isLoading: boolean;
   extractedText: string;
   error: string | null;
   progress: number;
   isProcessing: boolean;
   onGenerateFlashcards: () => void;
-  apiKey: string;
+  apiKey?: string;
   provider: string;
   showApiKeyInput: boolean;
 }
@@ -26,144 +26,86 @@ const PdfViewer: React.FC<PdfViewerProps> = ({
   progress,
   isProcessing,
   onGenerateFlashcards,
-  apiKey,
   provider,
   showApiKeyInput
 }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-      <Card className="glass-card overflow-hidden h-96">
-        <CardContent className="p-0 h-full">
-          {previewUrl && (
-            <iframe 
-              src={previewUrl}
-              className="w-full h-full border-0"
-              title="PDF Preview"
-            />
-          )}
-        </CardContent>
-      </Card>
-      
-      <Card className="glass-card overflow-hidden h-96">
-        <CardContent className="p-4 h-full overflow-auto">
-          {isLoading ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <Progress value={progress} className="w-full max-w-xs h-2 mb-2" />
-              <p className="text-sm text-gray-500">Loading PDF: {progress}%</p>
-            </div>
-          ) : extractedText ? (
-            <TextContent 
-              extractedText={extractedText}
-              isProcessing={isProcessing}
-              progress={progress}
-              onGenerateFlashcards={onGenerateFlashcards}
-              apiKey={apiKey}
-              provider={provider}
-              showApiKeyInput={showApiKeyInput}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center text-gray-400">
-              <p>Upload a PDF to get started</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+  const { toast } = useToast();
+  const [showText, setShowText] = useState(false);
 
-interface TextContentProps {
-  extractedText: string;
-  isProcessing: boolean;
-  progress: number;
-  onGenerateFlashcards: () => void;
-  apiKey: string;
-  provider: string;
-  showApiKeyInput: boolean;
-}
+  const handleGenerate = () => {
+    if (!API_CONFIGURATION.hasApiKey && !showApiKeyInput) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your API key in the AI Settings section before generating flashcards.",
+        variant: "destructive"
+      });
+      return;
+    }
+    onGenerateFlashcards();
+  };
 
-const TextContent: React.FC<TextContentProps> = ({
-  extractedText,
-  isProcessing,
-  progress,
-  onGenerateFlashcards,
-  apiKey,
-  provider,
-  showApiKeyInput
-}) => {
   return (
-    <div>
-      <h3 className="font-medium mb-2">PDF Content Status</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-        {extractedText.length > 300 ? extractedText.substring(0, 300) + '...' : extractedText}
-      </p>
-      
-      {isProcessing && (
-        <div className="mb-4">
-          <Progress value={progress} className="h-2 mb-2" />
-          <p className="text-sm text-center text-gray-500">
-            Analyzing content and generating flashcards: {Math.round(progress)}%
-          </p>
+    <div className="space-y-4">
+      {previewUrl && (
+        <div className="bg-gray-50 dark:bg-gray-900 border rounded-md p-3 h-96 overflow-hidden flex flex-col">
+          <div className="flex-grow overflow-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <p>Loading PDF...</p>
+                </div>
+              </div>
+            ) : (
+              <iframe src={previewUrl} className="w-full h-full" title="PDF preview" />
+            )}
+          </div>
+          
+          {!isLoading && extractedText && (
+            <div className="mt-3 pt-3 border-t space-y-2">
+              <div className="flex justify-between items-center">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowText(!showText)}
+                >
+                  {showText ? 'Hide' : 'Show'} Extracted Text
+                </Button>
+                <div className="text-sm">{extractedText.length} characters extracted</div>
+              </div>
+              
+              {showText && (
+                <div className="bg-white dark:bg-gray-800 p-3 rounded-md max-h-40 overflow-y-auto text-sm">
+                  {extractedText}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       
-      <GenerateFlashcardsButton 
-        isProcessing={isProcessing}
-        onGenerateFlashcards={onGenerateFlashcards}
-        apiKey={apiKey}
-        provider={provider}
-      />
-      
-      {!apiKey.trim() && !showApiKeyInput && (
-        <p className="text-xs text-amber-600 mt-2">
-          Using pre-configured API key for {provider === 'openai' ? 'OpenAI' : 
-                           provider === 'anthropic' ? 'Anthropic' : 
-                           provider === 'perplexity' ? 'Perplexity' : 
-                           'Google'}.
-        </p>
+      {!isLoading && extractedText && !error && (
+        <div className="flex flex-col space-y-4">
+          {isProcessing ? (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Generating flashcards...</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} />
+            </div>
+          ) : (
+            <Button 
+              onClick={handleGenerate} 
+              className="w-full"
+              disabled={isProcessing}
+            >
+              Generate Flashcards with {provider}
+            </Button>
+          )}
+        </div>
       )}
     </div>
-  );
-};
-
-interface GenerateFlashcardsButtonProps {
-  isProcessing: boolean;
-  onGenerateFlashcards: () => void;
-  apiKey: string;
-  provider: string;
-}
-
-const GenerateFlashcardsButton: React.FC<GenerateFlashcardsButtonProps> = ({
-  isProcessing,
-  onGenerateFlashcards,
-  apiKey,
-  provider
-}) => {
-  return (
-    <Button 
-      onClick={onGenerateFlashcards}
-      disabled={isProcessing}
-      className="w-full gap-2 mt-4"
-    >
-      {isProcessing ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Processing with {provider === 'openai' ? 'OpenAI' : 
-                        provider === 'anthropic' ? 'Claude' : 
-                        provider === 'perplexity' ? 'Perplexity' : 
-                        'Gemini'}...
-        </>
-      ) : (
-        <>
-          <Check className="h-4 w-4" />
-          Generate Flashcards with {provider === 'openai' ? 'OpenAI' : 
-                                 provider === 'anthropic' ? 'Claude' : 
-                                 provider === 'perplexity' ? 'Perplexity' : 
-                                 'Gemini'}
-        </>
-      )}
-    </Button>
   );
 };
 

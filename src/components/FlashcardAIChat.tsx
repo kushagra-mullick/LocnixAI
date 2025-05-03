@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Brain, Send, Loader2, MessageSquare, Bot, User, X, Settings } from 'lucide-react';
+import { Brain, Send, Loader2, Bot, User, X, Settings } from 'lucide-react';
 import { useFlashcards } from '@/context/FlashcardContext';
 import { 
   Dialog, 
@@ -11,14 +10,15 @@ import {
   DialogHeader, 
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea component
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { API_CONFIGURATION } from './pdf-uploader/services/api-config';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Eye, EyeOff, Lock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -46,6 +46,9 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
   const [isApiDialogOpen, setIsApiDialogOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<'openai' | 'anthropic' | 'perplexity' | 'gemini'>('openai');
   const [apiModel, setApiModel] = useState('gpt-4o-mini');
+  const [newApiKey, setNewApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeySaved, setApiKeySaved] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -57,8 +60,28 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleSaveApiKey = () => {
+    if (newApiKey.trim()) {
+      API_CONFIGURATION.OPENAI_API_KEY = newApiKey.trim();
+      setNewApiKey('');
+      setApiKeySaved(true);
+      setTimeout(() => setApiKeySaved(false), 3000);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
+    
+    // Check if API key is available
+    if (!API_CONFIGURATION.hasApiKey && !API_CONFIGURATION.useSimulationMode) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your API key in the AI settings before sending messages.",
+        variant: "destructive"
+      });
+      setIsApiDialogOpen(true);
+      return;
+    }
     
     const userMessage: Message = {
       role: 'user',
@@ -432,7 +455,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         </div>
       </div>
       
-      {/* API Settings Dialog - modified to remove API key input */}
+      {/* API Settings Dialog - modified to add API key input */}
       <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -535,15 +558,53 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
               </div>
             )}
             
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
-              <p className="text-sm">
-                API key is pre-configured. You can use the AI chat assistant without needing to enter an API key.
+            {/* API Key Input */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2" htmlFor="api-key-input">
+                API Key <Lock className="h-4 w-4" />
+              </Label>
+              <div className="flex gap-2">
+                <div className="relative flex-grow">
+                  <Input
+                    id="api-key-input"
+                    type={showApiKey ? "text" : "password"}
+                    value={newApiKey}
+                    onChange={(e) => setNewApiKey(e.target.value)}
+                    placeholder="Enter your API key"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button onClick={handleSaveApiKey} disabled={!newApiKey.trim()}>Save</Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Your API key will be stored locally in your browser and never sent to our servers.
               </p>
+              
+              {apiKeySaved && (
+                <Alert className="bg-green-50 text-green-800 border-green-500">
+                  <AlertDescription>API key saved successfully!</AlertDescription>
+                </Alert>
+              )}
+              
+              {API_CONFIGURATION.hasApiKey && (
+                <Alert className="bg-blue-50 text-blue-800 border-blue-500">
+                  <AlertDescription>
+                    API key is already set. Enter a new key to update it.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button onClick={() => setIsApiDialogOpen(false)}>
-              Save Settings
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
