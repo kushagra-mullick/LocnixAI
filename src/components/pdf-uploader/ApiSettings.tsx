@@ -85,8 +85,9 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     }
   };
 
+  // Changed from variant="success" to using a custom className instead
   const apiKeyStatus = API_CONFIGURATION.hasApiKey 
-    ? <Badge variant="success" className="ml-2 bg-green-500 text-white">API Key Set</Badge>
+    ? <Badge variant="outline" className="ml-2 bg-green-500 text-white">API Key Set</Badge>
     : <Badge variant="outline" className="ml-2">No API Key</Badge>;
 
   return (
