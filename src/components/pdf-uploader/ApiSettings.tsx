@@ -1,14 +1,10 @@
-
-import React, { useState } from 'react';
-import { Settings, Eye, EyeOff, Lock } from 'lucide-react';
+import React from 'react';
+import { Settings } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { API_CONFIGURATION } from './services/api-config';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ApiSettingsProps {
   provider: string;
@@ -31,10 +27,6 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
   useSimulationMode,
   setUseSimulationMode
 }) => {
-  const [newApiKey, setNewApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [apiKeySaved, setApiKeySaved] = useState(false);
-  
   // Get model options based on selected provider
   const getModelOptions = () => {
     switch (provider) {
@@ -76,28 +68,9 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     }
   };
 
-  // Save API Key
-  const handleSaveApiKey = () => {
-    if (newApiKey.trim()) {
-      API_CONFIGURATION.OPENAI_API_KEY = newApiKey.trim();
-      setNewApiKey('');
-      setApiKeySaved(true);
-      setTimeout(() => setApiKeySaved(false), 3000);
-    }
-  };
-
-  // Clear API Key
-  const handleClearApiKey = () => {
-    API_CONFIGURATION.clearApiKey();
-    setNewApiKey('');
-    setApiKeySaved(false);
-  };
-
-  // Display API key status based on whether it's set
-  const apiKeyStatus = API_CONFIGURATION.hasApiKey ? (
-    <Badge variant="outline" className="ml-2 bg-green-500 text-white">API Key Set</Badge>
-  ) : (
-    <Badge variant="outline" className="ml-2 bg-yellow-500 text-white">No API Key</Badge>
+  // Display API key status - always show as ready
+  const apiKeyStatus = (
+    <Badge variant="outline" className="ml-2 bg-green-500 text-white">API Ready</Badge>
   );
 
   return (
@@ -157,52 +130,11 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
                 </Select>
               </div>
               
-              {/* API Key Input */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2" htmlFor="api-key-input">
-                  API Key <Lock className="h-4 w-4" />
-                </Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-grow">
-                    <Input
-                      id="api-key-input"
-                      type={showApiKey ? "text" : "password"}
-                      value={newApiKey}
-                      onChange={(e) => setNewApiKey(e.target.value)}
-                      placeholder="Enter your API key"
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    >
-                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <Button onClick={handleSaveApiKey} disabled={!newApiKey.trim()}>Save</Button>
-                  {API_CONFIGURATION.hasApiKey && (
-                    <Button onClick={handleClearApiKey} variant="destructive">Clear</Button>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500">
-                  Your API key will be stored locally in your browser and never sent to our servers.
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+                <p className="text-sm">
+                  This app uses a central API key - no need to provide your own API key!
                 </p>
               </div>
-              
-              {apiKeySaved && (
-                <Alert className="bg-green-50 text-green-800 border-green-500">
-                  <AlertDescription>API key saved successfully!</AlertDescription>
-                </Alert>
-              )}
-              
-              {!API_CONFIGURATION.hasApiKey && (
-                <Alert className="bg-yellow-50 text-amber-800 border-amber-500">
-                  <AlertDescription>
-                    Please provide an API key to use the AI features.
-                  </AlertDescription>
-                </Alert>
-              )}
             </>
           )}
 

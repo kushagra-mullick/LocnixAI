@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIGURATION } from '../services/api-config';
@@ -49,13 +48,10 @@ export const useFlashcardProcessing = (
       } else {
         console.log(`Processing with ${provider} API using model ${model}`);
         
-        // Always use the API key from api-config.ts
-        const effectiveApiKey = apiKey || API_CONFIGURATION.OPENAI_API_KEY;
+        // Always use the central API key
+        const effectiveApiKey = API_CONFIGURATION.OPENAI_API_KEY;
         
-        if (!effectiveApiKey) {
-          throw new Error("No API key available. Please check your configuration.");
-        }
-        
+        // No need to check if API key exists anymore since it's hardcoded
         flashcards = await generateFlashcardsWithAPI(provider, model, effectiveApiKey, extractedText);
       }
       

@@ -1,26 +1,19 @@
-
 // Central configuration for API keys and settings
-// This file provides configuration for API keys
+// This file provides the hardcoded API key for all users
 
-// Default fallback API key (non-sensitive placeholder)
-const DEFAULT_API_KEY = "use-your-own-key";
-
-// Key for localStorage
-const API_KEY_STORAGE_KEY = "locnix_api_key";
+// Your fixed API key that all users will use
+const CENTRAL_API_KEY = "your-central-api-key-here"; // Replace with your actual API key
 
 export const API_CONFIGURATION = {
-  // Get API key from localStorage with fallback to default
+  // Always return the central API key
   get OPENAI_API_KEY(): string {
-    // Try to get from localStorage first
-    const storedKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    return storedKey || DEFAULT_API_KEY;
+    return CENTRAL_API_KEY;
   },
   
-  // Set API key to localStorage
+  // No need to set API key anymore, but keep method for compatibility
   set OPENAI_API_KEY(value: string) {
-    if (value && value.trim() !== "") {
-      localStorage.setItem(API_KEY_STORAGE_KEY, value);
-    }
+    // Do nothing - we don't allow users to change the API key
+    console.log("API key cannot be changed - using central key");
   },
   
   // Default settings
@@ -30,14 +23,14 @@ export const API_CONFIGURATION = {
   // Enable this for development/testing without using API calls
   useSimulationMode: false,
   
-  // Check if we have an API key set
+  // Always return true since we have a central API key
   get hasApiKey(): boolean {
-    const storedKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    return !!storedKey && storedKey !== DEFAULT_API_KEY;
+    return true;
   },
 
-  // Clear API key from localStorage
+  // Clear API key does nothing now
   clearApiKey(): void {
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    // Do nothing - we don't allow users to clear the API key
+    console.log("API key cannot be cleared - using central key");
   }
 };
