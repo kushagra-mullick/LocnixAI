@@ -59,12 +59,19 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onExtractComplete, onClose })
     console.log("Processing with settings:", { 
       provider, 
       model, 
-      apiKeyExists: true, // We always have a preset key
+      apiKeyExists: API_CONFIGURATION.hasApiKey, 
       useSimulationMode 
     });
     
-    // Always use the preset API key from config
-    processWithLLM(API_CONFIGURATION.OPENAI_API_KEY, provider, model, useSimulationMode);
+    // Get API key from central configuration
+    const apiKey = API_CONFIGURATION.OPENAI_API_KEY;
+    
+    if (!API_CONFIGURATION.hasApiKey && !useSimulationMode) {
+      setError("API key is required. Please enter your API key in the AI settings.");
+      return;
+    }
+    
+    processWithLLM(apiKey, provider, model, useSimulationMode);
   };
 
   // Determine which progress to display

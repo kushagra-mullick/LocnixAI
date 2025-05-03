@@ -69,6 +69,12 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
     }
   };
 
+  const handleClearApiKey = () => {
+    API_CONFIGURATION.clearApiKey();
+    setNewApiKey('');
+    setApiKeySaved(false);
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
     
@@ -582,25 +588,28 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
                   </button>
                 </div>
                 <Button onClick={handleSaveApiKey} disabled={!newApiKey.trim()}>Save</Button>
+                {API_CONFIGURATION.hasApiKey && (
+                  <Button onClick={handleClearApiKey} variant="destructive">Clear</Button>
+                )}
               </div>
               <p className="text-xs text-gray-500">
                 Your API key will be stored locally in your browser and never sent to our servers.
               </p>
-              
-              {apiKeySaved && (
-                <Alert className="bg-green-50 text-green-800 border-green-500">
-                  <AlertDescription>API key saved successfully!</AlertDescription>
-                </Alert>
-              )}
-              
-              {API_CONFIGURATION.hasApiKey && (
-                <Alert className="bg-blue-50 text-blue-800 border-blue-500">
-                  <AlertDescription>
-                    API key is already set. Enter a new key to update it.
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
+              
+            {apiKeySaved && (
+              <Alert className="bg-green-50 text-green-800 border-green-500">
+                <AlertDescription>API key saved successfully!</AlertDescription>
+              </Alert>
+            )}
+              
+            {!API_CONFIGURATION.hasApiKey && !API_CONFIGURATION.useSimulationMode && (
+              <Alert className="bg-yellow-50 text-amber-800 border-amber-500">
+                <AlertDescription>
+                  Please provide an API key to use the AI chat features.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={() => setIsApiDialogOpen(false)}>

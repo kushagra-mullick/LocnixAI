@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ interface PdfViewerProps {
   progress: number;
   isProcessing: boolean;
   onGenerateFlashcards: () => void;
-  apiKey?: string;
   provider: string;
   showApiKeyInput: boolean;
 }
@@ -32,7 +32,16 @@ const PdfViewer: React.FC<PdfViewerProps> = ({
   const [showText, setShowText] = useState(false);
 
   const handleGenerate = () => {
-    // We've removed the API key check since we always have a preset key
+    // Check if API key is set or if we're in simulation mode
+    if (!API_CONFIGURATION.hasApiKey && !API_CONFIGURATION.useSimulationMode) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your API key in the settings before generating flashcards.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     onGenerateFlashcards();
   };
 
