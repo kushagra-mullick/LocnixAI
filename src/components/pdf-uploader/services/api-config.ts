@@ -1,13 +1,25 @@
 // Central configuration for API keys and settings
-// This file provides the hardcoded API key for all users
+// This file provides centralized API key handling
 
-// Your fixed API key that all users will use
-const CENTRAL_API_KEY = "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";
+// Default API key that can be overridden with environment variables
+const DEFAULT_API_KEY = "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";
+
+// Get API key from environment variable if available, otherwise use default
+const getCentralApiKey = (): string => {
+  // For production deployment with environment variables
+  if (typeof import.meta.env.VITE_OPENAI_API_KEY === 'string' && 
+      import.meta.env.VITE_OPENAI_API_KEY.trim() !== '') {
+    return import.meta.env.VITE_OPENAI_API_KEY;
+  }
+  
+  // Fallback to default key
+  return DEFAULT_API_KEY;
+};
 
 export const API_CONFIGURATION = {
   // Always return the central API key
   get OPENAI_API_KEY(): string {
-    return CENTRAL_API_KEY;
+    return getCentralApiKey();
   },
   
   // No need to set API key anymore, but keep method for compatibility
