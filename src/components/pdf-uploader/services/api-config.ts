@@ -1,8 +1,9 @@
+
 // Central configuration for API keys and settings
 // This file provides centralized API key handling
 
 // Default API key that can be overridden with environment variables
-const DEFAULT_API_KEY = "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";
+const DEFAULT_API_KEY = "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";
 
 // Get API key from environment variable if available, otherwise use default
 const getCentralApiKey = (): string => {
