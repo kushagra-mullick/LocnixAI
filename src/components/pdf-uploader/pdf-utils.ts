@@ -1,9 +1,9 @@
 
 import * as pdfjs from 'pdfjs-dist';
 
-// Initialize the PDF.js worker
-const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Initialize the PDF.js worker - using a different approach that works with Vite
+const pdfWorkerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 export const extractTextFromPdf = async (
   pdfFile: File,
@@ -35,13 +35,18 @@ export const extractTextFromPdf = async (
           // Update progress based on page number
           onProgress(10 + Math.floor((i / numPages) * 80));
           
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(' ');
-          
-          extractedText += pageText + '\n\n';
+          try {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+              .map((item: any) => item.str)
+              .join(' ');
+            
+            extractedText += pageText + '\n\n';
+          } catch (pageError) {
+            console.error(`Error extracting text from page ${i}:`, pageError);
+            // Continue with other pages even if one fails
+          }
         }
         
         // Final progress
