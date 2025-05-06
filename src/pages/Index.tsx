@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import Features from '@/components/Features';
 import FlashcardGenerator from '@/components/FlashcardGenerator';
+import GettingStarted from '@/components/GettingStarted';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle, LightbulbIcon, Twitter, MessageSquare, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -27,11 +28,18 @@ const Index = () => {
         {/* Hero Section */}
         <Hero />
         
+        {/* Getting Started Section for new users */}
+        <section className="py-16 px-4 bg-gray-50 dark:bg-gray-900" id="getting-started">
+          <div className="container mx-auto">
+            <GettingStarted />
+          </div>
+        </section>
+        
         {/* Features Section */}
         <Features />
         
         {/* Generator Demo Section */}
-        <section className="py-24 px-4 relative overflow-hidden">
+        <section className="py-24 px-4 relative overflow-hidden" id="generator-demo">
           <div className="absolute inset-0 -z-10 overflow-hidden">
             <div className="absolute left-1/3 top-1/4 h-64 w-64 rounded-full bg-primary/10 filter blur-3xl opacity-60"></div>
             <div className="absolute right-1/3 bottom-1/3 h-72 w-72 rounded-full bg-accent/10 filter blur-3xl opacity-60"></div>
