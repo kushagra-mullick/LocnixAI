@@ -18,12 +18,6 @@ Locnix.ai is an innovative flashcard platform that leverages artificial intellig
 
 ## Getting Started
 
-Visit our [Getting Started Guide](#getting-started) on the homepage to learn how to use Locnix.ai:
-
-1. **Upload Content**: Upload PDFs or paste text to generate flashcards automatically
-2. **Generate Flashcards**: Our AI creates high-quality flashcards from your content
-3. **Study & Review**: Use spaced repetition to optimize your learning
-
 Visit [Locnix.ai](https://locnixai.netlify.app) to create your account and start generating flashcards today.
 
 ## Technology Stack
@@ -34,22 +28,6 @@ Visit [Locnix.ai](https://locnixai.netlify.app) to create your account and start
 - shadcn/ui components
 - Tanstack React Query
 - OpenAI API integration
-
-## API Configuration
-
-This application uses a central API key for all users by default. For production deployment, you can override the API key using an environment variable.
-
-### Environment Variables
-
-To override the default API key, set the following environment variable:
-
-```
-VITE_OPENAI_API_KEY=your_api_key_here
-```
-
-### Local Development
-
-For local development or testing without an environment file, the application will use the default API key embedded in the code.
 
 ## Contributing
 

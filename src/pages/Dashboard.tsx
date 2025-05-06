@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Plus, Search, Clock, LayoutGrid, Book, Trash2, Edit, 
   Brain, ArrowRight, Filter, ListFilter, Calendar, FileText,
-  AlertCircle, MessageSquare, HelpCircle
+  AlertCircle, MessageSquare
 } from 'lucide-react';
 import FlashcardGenerator from '@/components/FlashcardGenerator';
 import FlashcardAIChat from '@/components/FlashcardAIChat';
@@ -29,15 +29,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Flashcard } from '@/context/FlashcardContext';
-import Welcome from '@/components/Welcome';
-import { useWelcomeGuide } from '@/hooks/useWelcomeGuide';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
-  // Add welcome guide hook
-  const { showWelcome, setShowWelcome, openWelcomeGuide } = useWelcomeGuide();
-  
   const { flashcards, addFlashcard, addFlashcards, deleteFlashcard, updateFlashcard } = useFlashcards();
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -203,34 +196,6 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
-      {/* Welcome Guide Popup */}
-      <Welcome open={showWelcome} onOpenChange={setShowWelcome} />
-      
-      {/* Help Button (fixed position) */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button size="icon" className="h-12 w-12 rounded-full shadow-lg">
-              <HelpCircle className="h-6 w-6" />
-              <span className="sr-only">Help</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64">
-            <div className="space-y-4">
-              <h4 className="font-medium">Need help?</h4>
-              <Button variant="outline" className="w-full justify-start" onClick={openWelcomeGuide}>
-                Show Getting Started Guide
-              </Button>
-              <Link to="/help-center">
-                <Button variant="outline" className="w-full justify-start">
-                  Visit Help Center
-                </Button>
-              </Link>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
       
       <main className="flex-grow pt-28 pb-16 px-4">
         <div className="container mx-auto">
