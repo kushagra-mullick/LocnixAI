@@ -3,7 +3,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, FileText, BookOpen } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,6 @@ interface WelcomeProps {
 
 const Welcome = ({ open, onOpenChange, onDismiss }: WelcomeProps) => {
   const { toast } = useToast();
-  const navigate = useNavigate();
   
   const handleDismiss = () => {
     onDismiss();
@@ -30,11 +29,6 @@ const Welcome = ({ open, onOpenChange, onDismiss }: WelcomeProps) => {
       title: "Getting Started guide dismissed",
       description: "You can always access it again from the help menu"
     });
-  };
-  
-  const handleGoToDashboard = () => {
-    onDismiss();
-    navigate('/dashboard');
   };
   
   return (
@@ -91,9 +85,41 @@ const Welcome = ({ open, onOpenChange, onDismiss }: WelcomeProps) => {
         </div>
         
         <DialogFooter className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button className="w-full sm:w-auto gap-2" onClick={handleGoToDashboard}>
-            Get Started <ArrowRight className="h-4 w-4" />
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button className="w-full sm:w-auto gap-2">
+                Get Started <ArrowRight className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-4">
+              <h4 className="font-medium mb-2">Quick Tips</h4>
+              <ul className="text-sm space-y-2">
+                <li className="flex gap-2 items-center">
+                  <div className="bg-primary/10 p-1 rounded-full">1</div>
+                  <span>Upload a PDF or paste text</span>
+                </li>
+                <li className="flex gap-2 items-center">
+                  <div className="bg-primary/10 p-1 rounded-full">2</div>
+                  <span>Generate flashcards with AI</span>
+                </li>
+                <li className="flex gap-2 items-center">
+                  <div className="bg-primary/10 p-1 rounded-full">3</div>
+                  <span>Study and track your progress</span>
+                </li>
+              </ul>
+              <div className="mt-3">
+                <Link to="/dashboard">
+                  <Button size="sm" className="w-full">Go to Dashboard</Button>
+                </Link>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          <Link to="/tutorials">
+            <Button variant="outline" className="w-full sm:w-auto">
+              View Tutorials
+            </Button>
+          </Link>
           
           <Button variant="ghost" onClick={handleDismiss} className="w-full sm:w-auto">
             Dismiss
