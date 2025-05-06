@@ -9,9 +9,12 @@ import GettingStarted from '@/components/GettingStarted';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle, LightbulbIcon, Twitter, MessageSquare, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import Welcome from '@/components/Welcome';
+import { useWelcomeGuide } from '@/hooks/useWelcomeGuide';
 
 const Index = () => {
   const { toast } = useToast();
+  const { showWelcomeGuide, setShowWelcomeGuide, dismissWelcomeGuide } = useWelcomeGuide();
   
   const handleDemoRequest = () => {
     toast({
@@ -20,13 +23,36 @@ const Index = () => {
     });
   };
   
+  const handleShowGuide = () => {
+    setShowWelcomeGuide(true);
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
+      {/* Welcome Guide Dialog */}
+      <Welcome 
+        open={showWelcomeGuide} 
+        onOpenChange={setShowWelcomeGuide} 
+        onDismiss={dismissWelcomeGuide}
+      />
+      
       <main className="flex-grow">
         {/* Hero Section */}
         <Hero />
+        
+        {/* Getting Started Button */}
+        <div className="text-center py-4">
+          <Button 
+            onClick={handleShowGuide}
+            className="mx-auto flex items-center gap-2"
+            variant="outline"
+          >
+            <LightbulbIcon className="w-4 h-4" />
+            Show Getting Started Guide
+          </Button>
+        </div>
         
         {/* Getting Started Section for new users */}
         <section className="py-16 px-4 bg-gray-50 dark:bg-gray-900" id="getting-started">
