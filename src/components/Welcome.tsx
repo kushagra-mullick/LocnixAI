@@ -24,6 +24,11 @@ const Welcome = ({ open, onOpenChange }: WelcomeProps) => {
     navigate('/dashboard');
   };
 
+  const handleDismiss = () => {
+    onOpenChange(false);
+    // We no longer need to set localStorage here as it's handled in the hook
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -83,7 +88,7 @@ const Welcome = ({ open, onOpenChange }: WelcomeProps) => {
           <Button className="w-full sm:w-auto gap-2" onClick={handleGetStarted}>
             Get Started <ArrowRight className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+          <Button variant="ghost" onClick={handleDismiss} className="w-full sm:w-auto">
             Dismiss
           </Button>
         </div>
