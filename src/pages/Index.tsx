@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -148,11 +147,6 @@ const Index = () => {
                 <li>
                   <Link to="/help-center" className="hover:text-primary transition-colors">
                     Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/tutorials" className="hover:text-primary transition-colors">
-                    Tutorials
                   </Link>
                 </li>
                 <li>
