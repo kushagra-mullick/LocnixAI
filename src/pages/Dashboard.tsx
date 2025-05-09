@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -715,13 +716,17 @@ const FlashcardPreview = ({
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }) => {
-  const [isHovering, setIsHovering] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(false);
   
   return (
     <Card 
       className={`glass-card overflow-hidden h-60 flex flex-col relative group ${isSelected ? 'ring-2 ring-primary' : ''}`}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseEnter={() => {
+        if (!onToggleSelect) {
+          setShowAnswer(true);
+        }
+      }}
+      onMouseLeave={() => setShowAnswer(false)}
     >
       {card.category && (
         <div className="absolute top-3 left-3 px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
@@ -732,7 +737,7 @@ const FlashcardPreview = ({
       {/* Checkbox for selection */}
       {onToggleSelect && (
         <div 
-          className="absolute top-3 right-3 w-5 h-5 flex items-center justify-center"
+          className="absolute top-3 right-3 w-5 h-5 flex items-center justify-center z-10"
           onClick={(e) => {
             e.stopPropagation();
             onToggleSelect();
@@ -784,30 +789,73 @@ const FlashcardPreview = ({
         </div>
       </CardFooter>
       
-      {/* Preview of back content on hover */}
-      <div className={`absolute inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm p-6 flex flex-col transition-all duration-300 ${
-        isHovering ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      }`}>
-        <div className="font-medium text-sm text-gray-500 mb-2">Answer:</div>
-        <p className="line-clamp-5 text-sm">{card.back}</p>
-        <div className="mt-auto pt-4 flex justify-between items-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0 rounded-full text-red-500"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 gap-1 text-primary">
-            View Details
-            <ArrowRight className="h-3 w-3" />
-          </Button>
+      {/* Preview of back content on hover - only show when not in selection mode or explicitly clicked */}
+      {onToggleSelect ? (
+        // In selection mode, add a button to view answer
+        <div className={`absolute inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm p-6 flex flex-col transition-all duration-300 ${
+          showAnswer ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}>
+          <div className="font-medium text-sm text-gray-500 mb-2">Answer:</div>
+          <p className="line-clamp-5 text-sm">{card.back}</p>
+          <div className="mt-auto pt-4 flex justify-between items-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0 rounded-full text-red-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-1 text-primary">
+              View Details
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        // In regular mode, show answer on hover
+        <div className={`absolute inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm p-6 flex flex-col transition-all duration-300 ${
+          showAnswer ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}>
+          <div className="font-medium text-sm text-gray-500 mb-2">Answer:</div>
+          <p className="line-clamp-5 text-sm">{card.back}</p>
+          <div className="mt-auto pt-4 flex justify-between items-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0 rounded-full text-red-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-1 text-primary">
+              View Details
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add a view answer button that appears when in selection mode */}
+      {onToggleSelect && !showAnswer && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute bottom-3 right-3 text-xs"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowAnswer(true);
+          }}
+        >
+          View Answer
+        </Button>
+      )}
     </Card>
   );
 };
