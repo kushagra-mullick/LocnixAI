@@ -1,8 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Brain, Send, Loader2, Bot, User, X, Settings } from 'lucide-react';
+import { Brain, Send, Loader2, Bot, User, X, Settings, Save, Plus } from 'lucide-react';
 import { useFlashcards } from '@/context/FlashcardContext';
 import { 
   Dialog, 
@@ -19,6 +20,7 @@ import { API_CONFIGURATION } from './pdf-uploader/services/api-config';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useFlashcardOperations } from '@/hooks/useFlashcardOperations';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -31,6 +33,7 @@ interface FlashcardAIChatProps {
 
 const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
   const { flashcards } = useFlashcards();
+  const flashcardOps = useFlashcardOperations();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'system',
@@ -49,6 +52,8 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
   const [newApiKey, setNewApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [extractedFlashcards, setExtractedFlashcards] = useState<Array<{front: string; back: string; category?: string}>>([]);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -73,6 +78,50 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
     API_CONFIGURATION.clearApiKey();
     setNewApiKey('');
     setApiKeySaved(false);
+  };
+
+  const extractFlashcardsFromText = (text: string) => {
+    // Simple regex to find potential flashcard patterns
+    // This is a basic implementation that looks for patterns like "Front: ... Back: ..."
+    const flashcardRegex = /(?:Question|Front|Q):\s*([^\n]+)\s*(?:Answer|Back|A):\s*([^\n]+)/gi;
+    let match;
+    const cards: Array<{front: string; back: string; category?: string}> = [];
+
+    while ((match = flashcardRegex.exec(text)) !== null) {
+      cards.push({
+        front: match[1].trim(),
+        back: match[2].trim()
+      });
+    }
+
+    // If no matches found with explicit labels, try to analyze paragraph structure
+    if (cards.length === 0) {
+      const paragraphs = text.split('\n\n').filter(p => p.trim());
+      for (let i = 0; i < paragraphs.length - 1; i += 2) {
+        // Assume every two paragraphs could be a flashcard pair
+        if (paragraphs[i] && paragraphs[i+1] && 
+            paragraphs[i].length < 300 && paragraphs[i+1].length < 500) {
+          cards.push({
+            front: paragraphs[i].trim(),
+            back: paragraphs[i+1].trim()
+          });
+        }
+      }
+    }
+
+    return cards;
+  };
+
+  const handleImportFlashcards = () => {
+    if (extractedFlashcards.length > 0) {
+      flashcardOps.createFlashcardsFromBatch(extractedFlashcards);
+      toast({
+        title: "Flashcards imported",
+        description: `Successfully imported ${extractedFlashcards.length} flashcards`,
+      });
+      setExtractedFlashcards([]);
+      setShowImportDialog(false);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -133,6 +182,14 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
       };
       
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Check if the message contains potential flashcards
+      const newFlashcards = extractFlashcardsFromText(response);
+      if (newFlashcards.length > 0) {
+        setExtractedFlashcards(newFlashcards);
+        setShowImportDialog(true);
+      }
+      
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -461,7 +518,7 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
         </div>
       </div>
       
-      {/* API Settings Dialog - modified to add API key input */}
+      {/* API Settings Dialog */}
       <Dialog open={isApiDialogOpen} onOpenChange={setIsApiDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -614,6 +671,48 @@ const FlashcardAIChat: React.FC<FlashcardAIChatProps> = ({ onClose }) => {
           <DialogFooter>
             <Button onClick={() => setIsApiDialogOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Import Flashcards Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import AI Generated Flashcards</DialogTitle>
+            <DialogDescription>
+              The AI has generated {extractedFlashcards.length} potential flashcards. Review them before importing.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-grow mt-4">
+            <div className="space-y-4">
+              {extractedFlashcards.map((card, idx) => (
+                <div key={idx} className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-900/50">
+                  <div className="font-medium mb-2">Card {idx + 1}</div>
+                  <div className="mb-2">
+                    <Label>Front:</Label>
+                    <div className="p-2 bg-white dark:bg-slate-800 rounded mt-1 text-sm">
+                      {card.front}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Back:</Label>
+                    <div className="p-2 bg-white dark:bg-slate-800 rounded mt-1 text-sm">
+                      {card.back}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter className="border-t pt-4 mt-4">
+            <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleImportFlashcards} className="ml-2">
+              <Save className="h-4 w-4 mr-2" />
+              Import Flashcards
             </Button>
           </DialogFooter>
         </DialogContent>
