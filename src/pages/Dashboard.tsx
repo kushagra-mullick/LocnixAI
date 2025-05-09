@@ -30,8 +30,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Flashcard } from '@/context/FlashcardContext';
 
+// Import the folder management components
+import FolderManager from '@/components/FolderManager';
+import ImportSharedDeck from '@/components/ImportSharedDeck';
+import { getFolders } from '@/services/supabase';
+
 const Dashboard = () => {
-  const { flashcards, addFlashcard, addFlashcards, deleteFlashcard, updateFlashcard } = useFlashcards();
+  const { flashcards, addFlashcard, addFlashcards, deleteFlashcard, updateFlashcard, selectedFolderId, setSelectedFolderId, moveFlashcards } = useFlashcards();
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
@@ -44,6 +49,12 @@ const Dashboard = () => {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Add state for selected flashcard IDs
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [moveFolderId, setMoveFolderId] = useState<string | null>(null);
+  const [folders, setFolders] = useState<any[]>([]);
 
   const handleAddFlashcard = () => {
     if (!newCardFront.trim() || !newCardBack.trim()) {
@@ -193,6 +204,52 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Load folders for the move dialog
+  useEffect(() => {
+    const loadFolders = async () => {
+      try {
+        const foldersData = await getFolders();
+        setFolders(foldersData);
+      } catch (error) {
+        console.error("Error loading folders:", error);
+      }
+    };
+
+    if (showMoveDialog) {
+      loadFolders();
+    }
+  }, [showMoveDialog]);
+
+  // Handle flashcard selection
+  const toggleCardSelection = (id: string) => {
+    setSelectedCardIds(prev => 
+      prev.includes(id) 
+        ? prev.filter(cardId => cardId !== id) 
+        : [...prev, id]
+    );
+  };
+
+  // Handle batch card move
+  const handleMoveCards = () => {
+    if (selectedCardIds.length === 0) return;
+    
+    moveFlashcards(selectedCardIds, moveFolderId);
+    setSelectedCardIds([]);
+    setShowMoveDialog(false);
+    
+    toast({
+      title: "Success",
+      description: `${selectedCardIds.length} ${selectedCardIds.length === 1 ? 'flashcard' : 'flashcards'} moved successfully`
+    });
+  };
+
+  // Handle folder selection
+  const handleSelectFolder = (folderId: string | null) => {
+    setSelectedFolderId(folderId);
+    setSearchQuery(''); // Reset search when changing folders
+    setSelectedCardIds([]); // Clear selection when changing folders
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -208,6 +265,7 @@ const Dashboard = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3">
+              <ImportSharedDeck />
               <Button 
                 variant="outline"
                 className="gap-2"
@@ -282,115 +340,158 @@ const Dashboard = () => {
             </Card>
           </div>
           
-          {/* Search and Filter Bar */}
-          <div className="relative mb-8">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Search flashcards by keyword, category..."
-              className="pl-10 h-12 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm focus:ring-primary"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          {/* Flashcards Content */}
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className="mb-8">
-              <TabsTrigger value="all" className="rounded-full">All Cards</TabsTrigger>
-              <TabsTrigger value="categories" className="rounded-full">By Category</TabsTrigger>
-              <TabsTrigger value="recent" className="rounded-full">Recently Added</TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Folder sidebar */}
+            <div className="md:w-72 shrink-0">
+              <FolderManager 
+                onSelectFolder={handleSelectFolder} 
+                selectedFolderId={selectedFolderId} 
+              />
+            </div>
             
-            <TabsContent value="all" className="space-y-4">
-              {filteredFlashcards.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-gray-500 mb-4">No flashcards found. Create your first flashcard or try a different search.</p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateDialogOpen(true)}
-                    className="gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Flashcard
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredFlashcards.map(card => (
-                    <FlashcardPreview 
-                      key={card.id}
-                      card={card}
-                      onDelete={() => handleDeleteRequest(card.id)}
-                    />
-                  ))}
+            <div className="flex-1">
+              {/* Search and Filter Bar */}
+              <div className="relative mb-8">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search flashcards by keyword, category..."
+                  className="pl-10 h-12 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm focus:ring-primary"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+              </div>
+              
+              {/* Batch Actions */}
+              {selectedCardIds.length > 0 && (
+                <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">{selectedCardIds.length}</span> {selectedCardIds.length === 1 ? 'card' : 'cards'} selected
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowMoveDialog(true)}
+                    >
+                      Move to Folder
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSelectedCardIds([])}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               )}
-            </TabsContent>
-            
-            <TabsContent value="categories" className="space-y-8">
-              {Object.keys(categorizedFlashcards).length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-gray-500 mb-4">No categories found. Create your first flashcard with a category.</p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateDialogOpen(true)}
-                    className="gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Flashcard
-                  </Button>
-                </div>
-              ) : (
-                Object.entries(categorizedFlashcards).map(([category, cards]) => (
-                  <div key={category} className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-xl font-semibold">{category}</h3>
-                      <span className="text-sm text-gray-500">({cards.length} cards)</span>
+              
+              {/* Flashcards Content */}
+              <Tabs defaultValue="all" className="w-full">
+                <TabsList className="mb-8">
+                  <TabsTrigger value="all" className="rounded-full">All Cards</TabsTrigger>
+                  <TabsTrigger value="categories" className="rounded-full">By Category</TabsTrigger>
+                  <TabsTrigger value="recent" className="rounded-full">Recently Added</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="all" className="space-y-4">
+                  {filteredFlashcards.length === 0 ? (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500 mb-4">No flashcards found. Create your first flashcard or try a different search.</p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create Flashcard
+                      </Button>
                     </div>
+                  ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {cards.map(card => (
+                      {filteredFlashcards.map(card => (
                         <FlashcardPreview 
                           key={card.id}
                           card={card}
                           onDelete={() => handleDeleteRequest(card.id)}
+                          isSelected={selectedCardIds.includes(card.id)}
+                          onToggleSelect={() => toggleCardSelection(card.id)}
                         />
                       ))}
                     </div>
-                  </div>
-                ))
-              )}
-            </TabsContent>
-            
-            <TabsContent value="recent" className="space-y-4">
-              {filteredFlashcards.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-gray-500 mb-4">No flashcards found. Create your first flashcard.</p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateDialogOpen(true)}
-                    className="gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Flashcard
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...filteredFlashcards]
-                    .sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
-                    .slice(0, 12)
-                    .map(card => (
-                      <FlashcardPreview 
-                        key={card.id}
-                        card={card}
-                        onDelete={() => handleDeleteRequest(card.id)}
-                      />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="categories" className="space-y-8">
+                  {Object.keys(categorizedFlashcards).length === 0 ? (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500 mb-4">No categories found. Create your first flashcard with a category.</p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create Flashcard
+                      </Button>
+                    </div>
+                  ) : (
+                    Object.entries(categorizedFlashcards).map(([category, cards]) => (
+                      <div key={category} className="space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-xl font-semibold">{category}</h3>
+                          <span className="text-sm text-gray-500">({cards.length} cards)</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {cards.map(card => (
+                            <FlashcardPreview 
+                              key={card.id}
+                              card={card}
+                              onDelete={() => handleDeleteRequest(card.id)}
+                              isSelected={selectedCardIds.includes(card.id)}
+                              onToggleSelect={() => toggleCardSelection(card.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     ))
-                  }
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="recent" className="space-y-4">
+                  {filteredFlashcards.length === 0 ? (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500 mb-4">No flashcards found. Create your first flashcard.</p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create Flashcard
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[...filteredFlashcards]
+                        .sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
+                        .slice(0, 12)
+                        .map(card => (
+                          <FlashcardPreview 
+                            key={card.id}
+                            card={card}
+                            onDelete={() => handleDeleteRequest(card.id)}
+                            isSelected={selectedCardIds.includes(card.id)}
+                            onToggleSelect={() => toggleCardSelection(card.id)}
+                          />
+                        ))
+                      }
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
         </div>
       </main>
       
@@ -559,22 +660,90 @@ const Dashboard = () => {
           <FlashcardAIChat onClose={() => setShowAIChat(false)} />
         </DialogContent>
       </Dialog>
+      
+      {/* Move to Folder Dialog */}
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Move to Folder</DialogTitle>
+            <DialogDescription>
+              Select a destination folder for the selected flashcard{selectedCardIds.length === 1 ? '' : 's'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6">
+            <div className="space-y-4">
+              <div
+                className={`flex items-center p-3 rounded-md cursor-pointer ${moveFolderId === null ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                onClick={() => setMoveFolderId(null)}
+              >
+                <span className="font-medium">Uncategorized</span>
+              </div>
+              
+              {folders.map(folder => (
+                <div
+                  key={folder.id}
+                  className={`flex items-center p-3 rounded-md cursor-pointer ${moveFolderId === folder.id ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                  onClick={() => setMoveFolderId(folder.id)}
+                >
+                  <span className="font-medium">{folder.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleMoveCards}>
+              Move {selectedCardIds.length} Flashcard{selectedCardIds.length === 1 ? '' : 's'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-const FlashcardPreview = ({ card, onDelete }: { card: Flashcard; onDelete: () => void }) => {
+const FlashcardPreview = ({ 
+  card, 
+  onDelete, 
+  isSelected, 
+  onToggleSelect 
+}: { 
+  card: Flashcard; 
+  onDelete: () => void; 
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+}) => {
   const [isHovering, setIsHovering] = useState(false);
   
   return (
     <Card 
-      className="glass-card overflow-hidden h-60 flex flex-col relative group"
+      className={`glass-card overflow-hidden h-60 flex flex-col relative group ${isSelected ? 'ring-2 ring-primary' : ''}`}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
       {card.category && (
         <div className="absolute top-3 left-3 px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
           {card.category}
+        </div>
+      )}
+      
+      {/* Checkbox for selection */}
+      {onToggleSelect && (
+        <div 
+          className="absolute top-3 right-3 w-5 h-5 flex items-center justify-center"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect();
+          }}
+        >
+          <input 
+            type="checkbox" 
+            checked={isSelected} 
+            onChange={() => {}} 
+            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+          />
         </div>
       )}
       
