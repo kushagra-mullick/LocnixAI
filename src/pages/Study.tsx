@@ -25,7 +25,9 @@ const Study = () => {
   const { toast } = useToast();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const folderId = queryParams.get('folderId') || selectedFolderId;
+  const folderId = queryParams.get('folderId');
+  
+  console.log(`Study page loaded with folderId from URL: ${folderId}, selected folder: ${selectedFolderId}`);
   
   // Initialize study session
   useEffect(() => {
@@ -33,7 +35,9 @@ const Study = () => {
   }, [folderId]);
   
   const initializeStudySession = () => {
-    const cards = getFlashcardsForStudy(10, folderId);
+    console.log(`Initializing study session with folderId: ${folderId}`);
+    const cards = getFlashcardsForStudy(10, folderId !== null ? folderId : undefined);
+    console.log(`Retrieved ${cards.length} cards for study`);
     
     if (cards.length === 0) {
       toast({

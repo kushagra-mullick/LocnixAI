@@ -218,17 +218,22 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // Updated getFlashcardsForStudy to accept a specific folderId
   const getFlashcardsForStudy = (count: number = 10, specificFolderId?: string | null): Flashcard[] => {
     const now = new Date();
+    // Use specificFolderId if provided, otherwise use selectedFolderId
     const folderId = specificFolderId !== undefined ? specificFolderId : selectedFolderId;
+    
+    console.log(`Getting study cards for folder: ${folderId}, total cards: ${flashcards.length}`);
     
     // Filter flashcards by folder if specified
     const folderFlashcards = folderId !== null 
       ? flashcards.filter(card => card.folderId === folderId)
       : flashcards;
     
+    console.log(`Filtered cards for folder: ${folderFlashcards.length}`);
+    
     if (folderFlashcards.length === 0) {
+      console.log('No cards available in this folder');
       return [];
     }
     
@@ -237,6 +242,8 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!card.nextReviewDate) return true;
       return card.nextReviewDate <= now;
     });
+    
+    console.log(`Due cards: ${dueCards.length}`);
     
     // If we have enough due cards, return them
     if (dueCards.length >= count) {
@@ -247,12 +254,15 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const unstudiedCards = folderFlashcards.filter(card => !card.lastReviewed);
     const combinedCards = [...dueCards, ...unstudiedCards];
     
+    console.log(`Combined due and unstudied cards: ${combinedCards.length}`);
+    
     // If we still don't have enough cards, just return what we have
     if (combinedCards.length >= count) {
       return combinedCards.slice(0, count);
     }
     
     // If we still need more cards, include any cards from the folder
+    console.log(`Returning all available folder cards: ${folderFlashcards.length}`);
     return folderFlashcards.slice(0, count);
   };
 

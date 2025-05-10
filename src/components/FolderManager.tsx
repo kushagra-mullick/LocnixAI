@@ -187,6 +187,7 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
   };
   
   const handleStudyFolder = (folder: FolderType) => {
+    console.log(`Navigating to study with folder ID: ${folder.id}`);
     navigate(`/study?folderId=${folder.id}`);
   };
 
@@ -252,6 +253,7 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
             className="h-8 w-8 p-0 rounded-full"
             onClick={(e) => {
               e.stopPropagation();
+              console.log('Navigating to general study page');
               navigate('/study');
             }}
           >
