@@ -1,3 +1,4 @@
+
 // Central configuration for API keys and settings
 // This file provides the hardcoded API key for all users
 
@@ -19,6 +20,18 @@ export const API_CONFIGURATION = {
   // Default settings
   defaultProvider: "openai",
   defaultModel: "gpt-4o-mini",
+  
+  // Model property - added to fix TS errors
+  _model: "gpt-4o-mini",
+  
+  // Getter and setter for model property
+  get model(): string {
+    return this._model;
+  },
+  
+  set model(value: string) {
+    this._model = value;
+  },
   
   // Always disable simulation mode
   useSimulationMode: false,
