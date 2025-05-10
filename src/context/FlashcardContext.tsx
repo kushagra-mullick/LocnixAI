@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Flashcard, FlashcardContextType } from '../types/flashcard';
 import { sampleFlashcards } from '../data/sampleFlashcards';
@@ -220,15 +221,23 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const getFlashcardsForStudy = (count: number = 10, specificFolderId?: string | null): Flashcard[] => {
     const now = new Date();
-    // Use specificFolderId if provided, otherwise use selectedFolderId
-    const folderId = specificFolderId !== undefined ? specificFolderId : selectedFolderId;
     
-    console.log(`Getting study cards for folder: ${folderId}, total cards: ${flashcards.length}`);
+    // Handle the folderId consistently - it can be explicitly null, a string ID, or undefined
+    // If undefined is passed, we'll use the currently selected folder
+    const effectiveFolderId = specificFolderId === undefined ? selectedFolderId : specificFolderId;
     
-    // Filter flashcards by folder if specified
-    const folderFlashcards = folderId !== null 
-      ? flashcards.filter(card => card.folderId === folderId)
-      : flashcards;
+    console.log(`Getting study cards for folder: ${effectiveFolderId}, total cards: ${flashcards.length}`);
+    
+    // Filter flashcards by folder
+    let folderFlashcards = flashcards;
+    
+    if (effectiveFolderId !== null) {
+      // Filter for specific folder
+      folderFlashcards = flashcards.filter(card => card.folderId === effectiveFolderId);
+    } else {
+      // Filter for cards without a folder (null folderId)
+      folderFlashcards = flashcards.filter(card => !card.folderId);
+    }
     
     console.log(`Filtered cards for folder: ${folderFlashcards.length}`);
     

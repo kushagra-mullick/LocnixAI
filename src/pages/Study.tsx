@@ -25,7 +25,10 @@ const Study = () => {
   const { toast } = useToast();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const folderId = queryParams.get('folderId');
+  const urlFolderId = queryParams.get('folderId');
+  
+  // Convert the string "null" to actual null if needed
+  const folderId = urlFolderId === "null" ? null : urlFolderId;
   
   console.log(`Study page loaded with folderId from URL: ${folderId}, selected folder: ${selectedFolderId}`);
   
@@ -36,7 +39,7 @@ const Study = () => {
   
   const initializeStudySession = () => {
     console.log(`Initializing study session with folderId: ${folderId}`);
-    const cards = getFlashcardsForStudy(10, folderId !== null ? folderId : undefined);
+    const cards = getFlashcardsForStudy(10, folderId);
     console.log(`Retrieved ${cards.length} cards for study`);
     
     if (cards.length === 0) {

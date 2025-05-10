@@ -188,6 +188,7 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
   
   const handleStudyFolder = (folder: FolderType) => {
     console.log(`Navigating to study with folder ID: ${folder.id}`);
+    // Use clear parameter name to ensure it's picked up correctly
     navigate(`/study?folderId=${folder.id}`);
   };
 
@@ -254,7 +255,8 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
             onClick={(e) => {
               e.stopPropagation();
               console.log('Navigating to general study page');
-              navigate('/study');
+              // Send explicitly null instead of undefined
+              navigate('/study?folderId=null');
             }}
           >
             <BookOpen className="h-4 w-4" />
