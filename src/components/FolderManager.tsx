@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
@@ -13,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Folder, Plus, PlusCircle, Share2, Trash2, Pencil } from 'lucide-react';
+import { Folder, Plus, PlusCircle, Share2, Trash2, Pencil, BookOpen } from 'lucide-react';
 import { useFlashcards } from '@/context/FlashcardContext';
 import { useToast } from '@/hooks/use-toast';
 import { getFolders, createFolder, updateFolder, deleteFolder } from '@/services/supabase';
@@ -29,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ShareDeckDialog } from './ShareDeckDialog';
+import { useNavigate } from 'react-router-dom';
 
 interface FolderManagerProps {
   onSelectFolder: (folderId: string | null) => void;
@@ -49,6 +49,7 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
   const [folderToDelete, setFolderToDelete] = useState<FolderType | null>(null);
   
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Load folders
   useEffect(() => {
@@ -184,6 +185,10 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
     setEditingFolder(folder);
     setIsShareDialogOpen(true);
   };
+  
+  const handleStudyFolder = (folder: FolderType) => {
+    navigate(`/study?folderId=${folder.id}`);
+  };
 
   return (
     <div className="mb-6">
@@ -241,6 +246,17 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
           onClick={() => onSelectFolder(null)}
         >
           <span className="font-medium">Uncategorized</span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 w-8 p-0 rounded-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/study');
+            }}
+          >
+            <BookOpen className="h-4 w-4" />
+          </Button>
         </div>
         
         {isLoading ? (
@@ -266,8 +282,21 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
                   className="h-8 w-8 p-0 rounded-full"
                   onClick={(e) => {
                     e.stopPropagation();
+                    handleStudyFolder(folder);
+                  }}
+                  title="Study this folder"
+                >
+                  <BookOpen className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 rounded-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     openShareDialog(folder);
                   }}
+                  title="Share this deck"
                 >
                   <Share2 className="h-4 w-4" />
                 </Button>
@@ -279,6 +308,7 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
                     e.stopPropagation();
                     openEditDialog(folder);
                   }}
+                  title="Edit folder"
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -290,6 +320,7 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
                     e.stopPropagation();
                     openDeleteDialog(folder);
                   }}
+                  title="Delete folder"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

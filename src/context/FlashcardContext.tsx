@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Flashcard, FlashcardContextType } from '../types/flashcard';
 import { sampleFlashcards } from '../data/sampleFlashcards';
@@ -219,29 +218,44 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const getFlashcardsForStudy = (count: number = 10): Flashcard[] => {
+  // Updated getFlashcardsForStudy to accept a specific folderId
+  const getFlashcardsForStudy = (count: number = 10, specificFolderId?: string | null): Flashcard[] => {
     const now = new Date();
-    const dueCards = flashcards.filter(card => {
+    const folderId = specificFolderId !== undefined ? specificFolderId : selectedFolderId;
+    
+    // Filter flashcards by folder if specified
+    const folderFlashcards = folderId !== null 
+      ? flashcards.filter(card => card.folderId === folderId)
+      : flashcards;
+    
+    if (folderFlashcards.length === 0) {
+      return [];
+    }
+    
+    // Find due cards in the selected folder
+    const dueCards = folderFlashcards.filter(card => {
       if (!card.nextReviewDate) return true;
       return card.nextReviewDate <= now;
     });
-
-    // If we want to study flashcards from a specific folder
-    const folderCards = selectedFolderId 
-      ? dueCards.filter(card => card.folderId === selectedFolderId)
-      : dueCards;
-
-    // If not enough cards due, just return cards we haven't studied yet or any cards
-    return folderCards.length >= count 
-      ? folderCards.slice(0, count) 
-      : folderCards.concat(
-          flashcards
-            .filter(card => !card.lastReviewed && (selectedFolderId ? card.folderId === selectedFolderId : true))
-            .slice(0, count - folderCards.length)
-        );
+    
+    // If we have enough due cards, return them
+    if (dueCards.length >= count) {
+      return dueCards.slice(0, count);
+    }
+    
+    // Otherwise, include cards we haven't studied yet from the same folder
+    const unstudiedCards = folderFlashcards.filter(card => !card.lastReviewed);
+    const combinedCards = [...dueCards, ...unstudiedCards];
+    
+    // If we still don't have enough cards, just return what we have
+    if (combinedCards.length >= count) {
+      return combinedCards.slice(0, count);
+    }
+    
+    // If we still need more cards, include any cards from the folder
+    return folderFlashcards.slice(0, count);
   };
 
-  // Move flashcards between folders
   const moveFlashcards = async (flashcardIds: string[], folderId: string | null) => {
     if (isAuthenticated) {
       try {
