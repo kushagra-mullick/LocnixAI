@@ -229,33 +229,115 @@ export const callGemini = async (message: string, previousMessages: Message[], f
 
 // Helper function to extract flashcards from text
 export const extractFlashcardsFromText = (text: string): Array<{front: string; back: string; category?: string}> => {
-  // Simple regex to find potential flashcard patterns
-  // This is a basic implementation that looks for patterns like "Front: ... Back: ..."
-  const flashcardRegex = /(?:Question|Front|Q):\s*([^\n]+)\s*(?:Answer|Back|A):\s*([^\n]+)/gi;
-  let match;
-  const cards: Array<{front: string; back: string; category?: string}> = [];
-
-  while ((match = flashcardRegex.exec(text)) !== null) {
-    cards.push({
-      front: match[1].trim(),
-      back: match[2].trim()
-    });
-  }
-
-  // If no matches found with explicit labels, try to analyze paragraph structure
-  if (cards.length === 0) {
-    const paragraphs = text.split('\n\n').filter(p => p.trim());
-    for (let i = 0; i < paragraphs.length - 1; i += 2) {
-      // Assume every two paragraphs could be a flashcard pair
-      if (paragraphs[i] && paragraphs[i+1] && 
-          paragraphs[i].length < 300 && paragraphs[i+1].length < 500) {
+  // Clean the text before processing
+  const cleanText = text
+    .replace(/^#+\s+/gm, '') // Remove markdown headings
+    .replace(/\*\*/g, '')    // Remove bold markdown
+    .replace(/\*/g, '')      // Remove italic markdown
+    .replace(/`/g, '')       // Remove code ticks
+    .replace(/^\d+\.\s+/gm, ''); // Remove numbered lists
+  
+  // First try to find flashcards with explicit question/answer patterns
+  const explicitPatterns = [
+    // Q&A pattern
+    /(?:Question|Q|Front):\s*["']?(.*?)["']?\s*(?:Answer|A|Back):\s*["']?(.*?)["']?(?=\n\s*(?:Question|Q|Front):|$)/gis,
+    
+    // Front/Back pattern
+    /(?:Front|Question):\s*["']?(.*?)["']?\s*(?:Back|Answer):\s*["']?(.*?)["']?(?=\n\s*(?:Front|Question):|$)/gis,
+    
+    // Numbered pattern with Q&A
+    /\d+\s*[\.\)]\s*(?:Question|Q|Front):\s*["']?(.*?)["']?\s*(?:Answer|A|Back):\s*["']?(.*?)["']?(?=\n\s*\d+\s*[\.\)]|$)/gis,
+    
+    // JSON-like pattern
+    /["']?(?:front|question)["']?\s*[=:]\s*["'](.+?)["'][\s,]+["']?(?:back|answer)["']?\s*[=:]\s*["'](.+?)["']/gi
+  ];
+  
+  let cards: Array<{front: string; back: string; category?: string}> = [];
+  
+  // Try each pattern
+  for (const pattern of explicitPatterns) {
+    let match;
+    while ((match = pattern.exec(cleanText)) !== null) {
+      if (match[1] && match[2] && 
+          match[1].trim().length > 0 && 
+          match[2].trim().length > 0) {
         cards.push({
-          front: paragraphs[i].trim(),
-          back: paragraphs[i+1].trim()
+          front: match[1].trim(),
+          back: match[2].trim(),
+          category: 'AI Generated'
         });
       }
     }
+    
+    // If we found cards with this pattern, stop looking
+    if (cards.length > 0) break;
   }
-
-  return cards;
+  
+  // If no matches with explicit patterns, try code blocks for JSON
+  if (cards.length === 0) {
+    const jsonBlocks = cleanText.match(/```(?:json)?\s*([\s\S]*?)```/g);
+    if (jsonBlocks) {
+      for (const block of jsonBlocks) {
+        try {
+          const jsonContent = block.replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1').trim();
+          const parsedCards = JSON.parse(jsonContent);
+          
+          if (Array.isArray(parsedCards)) {
+            // Filter out cards that don't have both front and back
+            const validCards = parsedCards.filter(card => 
+              card && 
+              typeof card === 'object' && 
+              ((card.front && card.back) || (card.question && card.answer))
+            );
+            
+            cards = validCards.map(card => ({
+              front: (card.front || card.question || '').trim(),
+              back: (card.back || card.answer || '').trim(),
+              category: (card.category || 'AI Generated').trim()
+            }));
+            
+            if (cards.length > 0) break;
+          }
+        } catch (e) {
+          // Continue to next block if this one doesn't parse
+          console.error('Error parsing JSON block:', e);
+        }
+      }
+    }
+  }
+  
+  // Last resort: try to analyze paragraph structure
+  if (cards.length === 0) {
+    const paragraphs = cleanText
+      .split(/\n{2,}/)
+      .filter(p => p.trim().length > 0 && p.trim().length < 500);
+    
+    for (let i = 0; i < paragraphs.length - 1; i += 2) {
+      // Check if this might be a question-answer pair
+      if (paragraphs[i] && paragraphs[i+1] && 
+          paragraphs[i].length < 250 && paragraphs[i+1].length < 500 &&
+          !paragraphs[i].includes('```') && !paragraphs[i+1].includes('```')) {
+        
+        // Look for question-like endings
+        const isQuestion = paragraphs[i].trim().endsWith('?') || 
+                        /what|how|why|when|define|explain|describe/i.test(paragraphs[i]);
+        
+        if (isQuestion) {
+          cards.push({
+            front: paragraphs[i].trim(),
+            back: paragraphs[i+1].trim(),
+            category: 'AI Generated'
+          });
+        }
+      }
+    }
+  }
+  
+  // Filter out cards with very short content
+  return cards.filter(card => 
+    card.front.length > 3 && 
+    card.back.length > 3 && 
+    // Filter out cards with repetitive content
+    card.front.toLowerCase() !== card.back.toLowerCase()
+  );
 };
