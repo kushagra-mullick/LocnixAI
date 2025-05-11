@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Flashcard, FlashcardContextType } from '../types/flashcard';
 import { sampleFlashcards } from '../data/sampleFlashcards';
@@ -226,21 +225,23 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // If undefined is passed, we'll use the currently selected folder
     const effectiveFolderId = specificFolderId === undefined ? selectedFolderId : specificFolderId;
     
-    console.log(`Getting study cards for folder: ${effectiveFolderId}, total cards: ${flashcards.length}`);
+    console.log(`Getting study cards for folder ID: ${effectiveFolderId}`);
+    console.log(`Total available flashcards: ${flashcards.length}`);
     
     // Filter flashcards by folder
-    let folderFlashcards = flashcards;
+    let folderFlashcards: Flashcard[] = [];
     
-    if (effectiveFolderId !== null) {
-      // Filter for specific folder
-      folderFlashcards = flashcards.filter(card => card.folderId === effectiveFolderId);
-    } else {
-      // Filter for cards without a folder (null folderId)
+    if (effectiveFolderId === null) {
+      // Get cards without any folder (folderId is null or undefined)
       folderFlashcards = flashcards.filter(card => !card.folderId);
+      console.log(`Filtered for uncategorized cards: found ${folderFlashcards.length} cards`);
+    } else {
+      // Get cards for a specific folder
+      folderFlashcards = flashcards.filter(card => card.folderId === effectiveFolderId);
+      console.log(`Filtered for folder ID ${effectiveFolderId}: found ${folderFlashcards.length} cards`);
     }
     
-    console.log(`Filtered cards for folder: ${folderFlashcards.length}`);
-    
+    // If no cards in this folder, return empty array
     if (folderFlashcards.length === 0) {
       console.log('No cards available in this folder');
       return [];
@@ -248,11 +249,11 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     // Find due cards in the selected folder
     const dueCards = folderFlashcards.filter(card => {
-      if (!card.nextReviewDate) return true;
+      if (!card.nextReviewDate) return true; // Cards not studied yet are always due
       return card.nextReviewDate <= now;
     });
     
-    console.log(`Due cards: ${dueCards.length}`);
+    console.log(`Due cards in folder: ${dueCards.length}`);
     
     // If we have enough due cards, return them
     if (dueCards.length >= count) {
@@ -270,7 +271,7 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return combinedCards.slice(0, count);
     }
     
-    // If we still need more cards, include any cards from the folder
+    // If we still need more cards, just return all cards from the folder
     console.log(`Returning all available folder cards: ${folderFlashcards.length}`);
     return folderFlashcards.slice(0, count);
   };
