@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Folder, Plus, PlusCircle, Share2, Trash2, Pencil, BookOpen } from 'lucide-react';
+import { Folder, Plus, PlusCircle, Share2, Trash2, Pencil } from 'lucide-react';
 import { useFlashcards } from '@/context/FlashcardContext';
 import { useToast } from '@/hooks/use-toast';
 import { getFolders, createFolder, updateFolder, deleteFolder } from '@/services/supabase';
@@ -28,7 +29,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ShareDeckDialog } from './ShareDeckDialog';
-import { useNavigate } from 'react-router-dom';
 
 interface FolderManagerProps {
   onSelectFolder: (folderId: string | null) => void;
@@ -49,7 +49,6 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
   const [folderToDelete, setFolderToDelete] = useState<FolderType | null>(null);
   
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   // Load folders
   useEffect(() => {
@@ -185,13 +184,6 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
     setEditingFolder(folder);
     setIsShareDialogOpen(true);
   };
-  
-  // Update this function to ensure it sends the user to study with the correct folder ID
-  const handleStudyFolder = (folder: FolderType) => {
-    console.log(`Navigating to study with folder ID: ${folder.id}`);
-    // Make sure we're always passing the right folder ID as a query parameter
-    navigate(`/study?folderId=${encodeURIComponent(folder.id)}`);
-  };
 
   return (
     <div className="mb-6">
@@ -249,20 +241,6 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
           onClick={() => onSelectFolder(null)}
         >
           <span className="font-medium">Uncategorized</span>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0 rounded-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('Navigating to general study page');
-              // Use null explicitly for uncategorized cards
-              navigate('/study?folderId=null');
-            }}
-            title="Study uncategorized cards"
-          >
-            <BookOpen className="h-4 w-4" />
-          </Button>
         </div>
         
         {isLoading ? (
@@ -288,21 +266,8 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
                   className="h-8 w-8 p-0 rounded-full"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleStudyFolder(folder);
-                  }}
-                  title="Study this folder"
-                >
-                  <BookOpen className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0 rounded-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
                     openShareDialog(folder);
                   }}
-                  title="Share this deck"
                 >
                   <Share2 className="h-4 w-4" />
                 </Button>
@@ -314,7 +279,6 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
                     e.stopPropagation();
                     openEditDialog(folder);
                   }}
-                  title="Edit folder"
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -326,7 +290,6 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
                     e.stopPropagation();
                     openDeleteDialog(folder);
                   }}
-                  title="Delete folder"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
