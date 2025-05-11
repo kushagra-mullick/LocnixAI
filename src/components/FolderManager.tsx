@@ -186,9 +186,11 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
     setIsShareDialogOpen(true);
   };
   
+  // Update this function to ensure it sends the user to study with the correct folder ID
   const handleStudyFolder = (folder: FolderType) => {
     console.log(`Navigating to study with folder ID: ${folder.id}`);
-    navigate(`/study?folderId=${folder.id}`);
+    // Make sure we're always passing the right folder ID as a query parameter
+    navigate(`/study?folderId=${encodeURIComponent(folder.id)}`);
   };
 
   return (
@@ -254,6 +256,7 @@ export const FolderManager: React.FC<FolderManagerProps> = ({ onSelectFolder, se
             onClick={(e) => {
               e.stopPropagation();
               console.log('Navigating to general study page');
+              // Use null explicitly for uncategorized cards
               navigate('/study?folderId=null');
             }}
             title="Study uncategorized cards"

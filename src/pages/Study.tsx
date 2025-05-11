@@ -39,8 +39,20 @@ const Study = () => {
   
   const initializeStudySession = () => {
     console.log(`Initializing study session with folderId: ${folderId}`);
+    console.log('Type of folderId:', typeof folderId, 'Value:', folderId);
+    
+    // Let's be extra explicit with the folderId parameter to ensure it's passed correctly
     const cards = getFlashcardsForStudy(10, folderId);
     console.log(`Retrieved ${cards.length} cards for study`);
+    
+    // Log more details about the retrieved cards for debugging
+    if (cards.length > 0) {
+      console.log(`First card example:`, {
+        id: cards[0].id,
+        front: cards[0].front.substring(0, 20) + '...',
+        folderId: cards[0].folderId
+      });
+    }
     
     if (cards.length === 0) {
       toast({

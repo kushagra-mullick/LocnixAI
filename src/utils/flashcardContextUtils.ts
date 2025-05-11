@@ -1,3 +1,4 @@
+
 import { Flashcard } from '../types/flashcard';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -53,7 +54,7 @@ export const filterFlashcardsForStudy = (
   console.log(`Getting study cards for folder ID: ${effectiveFolderId}`);
   console.log(`Total available flashcards: ${flashcards.length}`);
   
-  // Filter flashcards by folder
+  // Filter flashcards by folder - using loose comparison for null/undefined
   let folderFlashcards: Flashcard[] = [];
   
   if (effectiveFolderId === null) {
@@ -61,9 +62,15 @@ export const filterFlashcardsForStudy = (
     folderFlashcards = flashcards.filter(card => !card.folderId);
     console.log(`Filtered for uncategorized cards: found ${folderFlashcards.length} cards`);
   } else {
-    // Get cards for a specific folder
+    // Get cards for a specific folder - using strict equality since we're comparing with a string ID
     folderFlashcards = flashcards.filter(card => card.folderId === effectiveFolderId);
-    console.log(`Filtered for folder ID ${effectiveFolderId}: found ${folderFlashcards.length} cards`);
+    console.log(`Filtered for folder ID ${effectiveFolderId}: found ${folderFlashcards.length} cards with matching folders`);
+    
+    // Debug: Log each card's folder ID to identify potential mismatches 
+    if (folderFlashcards.length === 0) {
+      console.log("Folder IDs in all flashcards:");
+      flashcards.forEach(card => console.log(`Card ID: ${card.id}, Folder ID: ${card.folderId}`));
+    }
   }
   
   // If no cards in this folder, return empty array
@@ -71,6 +78,11 @@ export const filterFlashcardsForStudy = (
     console.log('No cards available in this folder');
     return [];
   }
+  
+  // For AI-generated cards and new cards, we want to prioritize them for study
+  // regardless of review dates, because they likely don't have lastReviewed or nextReviewDate set
+  const newCards = folderFlashcards.filter(card => !card.lastReviewed);
+  console.log(`New/never studied cards in folder: ${newCards.length}`);
   
   // Find due cards in the selected folder
   const dueCards = folderFlashcards.filter(card => {
@@ -80,23 +92,27 @@ export const filterFlashcardsForStudy = (
   
   console.log(`Due cards in folder: ${dueCards.length}`);
   
-  // If we have enough due cards, return them
-  if (dueCards.length >= count) {
-    return dueCards.slice(0, count);
-  }
+  // Prioritize returning cards in this order:
+  // 1. New cards that have never been studied
+  // 2. Cards that are due for review
+  // 3. Any remaining cards in the folder
   
-  // Otherwise, include cards we haven't studied yet from the same folder
-  const unstudiedCards = folderFlashcards.filter(card => !card.lastReviewed);
-  const combinedCards = [...dueCards, ...unstudiedCards];
+  // Combine and deduplicate cards (new cards might overlap with due cards)
+  const combinedCards = Array.from(new Set([...newCards, ...dueCards]));
   
-  console.log(`Combined due and unstudied cards: ${combinedCards.length}`);
+  console.log(`Combined new and due cards: ${combinedCards.length}`);
   
-  // If we still don't have enough cards, just return what we have
+  // If we have enough priority cards, return them
   if (combinedCards.length >= count) {
     return combinedCards.slice(0, count);
   }
   
-  // If we still need more cards, just return all cards from the folder
-  console.log(`Returning all available folder cards: ${folderFlashcards.length}`);
-  return folderFlashcards.slice(0, count);
+  // If we still need more cards, include all cards from the folder up to the count
+  const remainingCount = count - combinedCards.length;
+  const remainingCards = folderFlashcards.filter(
+    card => !combinedCards.includes(card)
+  ).slice(0, remainingCount);
+  
+  console.log(`Adding ${remainingCards.length} additional cards to reach count target`);
+  return [...combinedCards, ...remainingCards];
 };
