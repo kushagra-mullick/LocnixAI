@@ -41,11 +41,18 @@ export const getFlashcards = async (folderId?: string) => {
  */
 export const addFlashcard = async (flashcard: Omit<Flashcard, 'id' | 'dateCreated'>) => {
   try {
+    // First retrieve the current user's ID
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) throw userError;
+    if (!userData.user) throw new Error("User not authenticated");
+    
     const { data, error } = await supabase.from('flashcards').insert({
       front: flashcard.front,
       back: flashcard.back,
       category: flashcard.category,
-      folder_id: flashcard.folderId
+      folder_id: flashcard.folderId,
+      user_id: userData.user.id // Include the user_id field
     }).select().single();
     
     if (error) throw error;
