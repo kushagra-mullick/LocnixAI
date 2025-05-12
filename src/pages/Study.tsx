@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Flashcard from '@/components/Flashcard';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useFlashcards } from '@/context/FlashcardContext';
 import { useToast } from '@/components/ui/use-toast';
+import { useLocation } from 'react-router-dom';
 import { 
   ChevronLeft, ChevronRight, RotateCcw, 
   Pause, Play, Filter, CheckCircle2, Award, 
@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const Study = () => {
-  const { getFlashcardsForStudy, rateFlashcard } = useFlashcards();
+  const { getFlashcardsForStudy, rateFlashcard, selectedFolderId } = useFlashcards();
   const [studyCards, setStudyCards] = useState<any[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -23,15 +23,53 @@ const Study = () => {
   const [cardsCompleted, setCardsCompleted] = useState(0);
   const [studySessionComplete, setStudySessionComplete] = useState(false);
   const { toast } = useToast();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const urlFolderId = queryParams.get('folderId');
+  
+  // Convert the string "null" to actual null if needed
+  const folderId = urlFolderId === "null" ? null : urlFolderId;
+  
+  console.log(`Study page loaded with folderId from URL: ${folderId}, selected folder: ${selectedFolderId}`);
   
   // Initialize study session
   useEffect(() => {
-    const cards = getFlashcardsForStudy(10);
+    initializeStudySession();
+  }, [folderId]);
+  
+  const initializeStudySession = () => {
+    console.log(`Initializing study session with folderId: ${folderId}`);
+    console.log('Type of folderId:', typeof folderId, 'Value:', folderId);
+    
+    // Let's be extra explicit with the folderId parameter to ensure it's passed correctly
+    const cards = getFlashcardsForStudy(10, folderId);
+    console.log(`Retrieved ${cards.length} cards for study`);
+    
+    // Log more details about the retrieved cards for debugging
+    if (cards.length > 0) {
+      console.log(`First card example:`, {
+        id: cards[0].id,
+        front: cards[0].front.substring(0, 20) + '...',
+        folderId: cards[0].folderId
+      });
+    }
+    
+    if (cards.length === 0) {
+      toast({
+        title: "No cards available",
+        description: folderId 
+          ? "There are no cards in this folder ready for study. Try adding more cards." 
+          : "There are no cards ready for study. Try adding more cards.",
+        variant: "destructive"
+      });
+    }
+    
     setStudyCards(cards);
     setCurrentCardIndex(0);
     setCardsCompleted(0);
+    setStudyTime(0);
     setStudySessionComplete(false);
-  }, []);
+  };
   
   // Timer for study session
   useEffect(() => {
@@ -79,12 +117,7 @@ const Study = () => {
   };
   
   const resetSession = () => {
-    const cards = getFlashcardsForStudy(10);
-    setStudyCards(cards);
-    setCurrentCardIndex(0);
-    setCardsCompleted(0);
-    setStudyTime(0);
-    setStudySessionComplete(false);
+    initializeStudySession();
   };
   
   const formatTime = (seconds: number) => {
@@ -112,7 +145,7 @@ const Study = () => {
                 <div>
                   <h1 className="text-3xl font-display font-bold mb-2">Study Session</h1>
                   <p className="text-gray-600 dark:text-gray-300">
-                    Focus on learning and retention
+                    {folderId ? "Focusing on selected folder" : "Studying across all folders"}
                   </p>
                 </div>
                 
@@ -158,7 +191,7 @@ const Study = () => {
                   </div>
                 </div>
                 <Progress 
-                  value={(cardsCompleted / studyCards.length) * 100} 
+                  value={(cardsCompleted / (studyCards.length || 1)) * 100} 
                   className="h-2"
                 />
               </div>
@@ -207,8 +240,20 @@ const Study = () => {
               </div>
               
               {/* Flashcard Container */}
-              <div className={cn("transition-opacity duration-300", isPaused ? "opacity-50" : "opacity-100")}>
-                {studyCards.length > 0 && (
+              {studyCards.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-gray-500 mb-4">No cards available for study in this folder.</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={resetSession}
+                    className="gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Try Again
+                  </Button>
+                </div>
+              ) : (
+                <div className={cn("transition-opacity duration-300", isPaused ? "opacity-50" : "opacity-100")}>
                   <Flashcard
                     id={studyCards[currentCardIndex].id}
                     front={studyCards[currentCardIndex].front}
@@ -216,35 +261,37 @@ const Study = () => {
                     category={studyCards[currentCardIndex].category}
                     onRate={handleCardRate}
                   />
-                )}
-              </div>
+                </div>
+              )}
               
               {/* Navigation Controls */}
-              <div className="flex justify-between items-center mt-6">
-                <Button 
-                  variant="outline" 
-                  className="gap-1"
-                  onClick={handlePrevCard}
-                  disabled={currentCardIndex === 0}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                
-                <div className="text-sm text-gray-500">
-                  Card {currentCardIndex + 1} of {studyCards.length}
+              {studyCards.length > 0 && (
+                <div className="flex justify-between items-center mt-6">
+                  <Button 
+                    variant="outline" 
+                    className="gap-1"
+                    onClick={handlePrevCard}
+                    disabled={currentCardIndex === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="text-sm text-gray-500">
+                    Card {currentCardIndex + 1} of {studyCards.length}
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="gap-1"
+                    onClick={handleNextCard}
+                    disabled={currentCardIndex === studyCards.length - 1}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-                
-                <Button 
-                  variant="outline" 
-                  className="gap-1"
-                  onClick={handleNextCard}
-                  disabled={currentCardIndex === studyCards.length - 1}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              )}
               
               {/* Instructions */}
               <div className="mt-12 text-center text-sm text-gray-500">
@@ -259,6 +306,7 @@ const Study = () => {
   );
 };
 
+// Keep the StudyComplete component the same
 const StudyComplete = ({ 
   totalCards, 
   studyTime,

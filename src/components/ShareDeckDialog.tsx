@@ -40,32 +40,35 @@ export const ShareDeckDialog: React.FC<ShareDeckDialogProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    if (folder) {
-      setDeckName(folder.name);
-      setDescription(folder.description || '');
+    const checkExistingShare = async () => {
+      if (!folder) return;
       
-      // Check if folder is already shared
-      const checkExistingShare = async () => {
-        try {
-          const sharedDecks = await getSharedDecks();
-          const existingDeck = sharedDecks.find(deck => deck.folder_id === folder.id);
-          if (existingDeck) {
-            setExistingShare(existingDeck);
-            setDeckName(existingDeck.name);
-            setDescription(existingDeck.description || '');
-            setIsPublic(existingDeck.is_public);
-            
-            const shareUrl = `${window.location.origin}/shared/${existingDeck.share_code}`;
-            setShareUrl(shareUrl);
-          } else {
-            setExistingShare(null);
-            setShareUrl('');
-          }
-        } catch (error) {
-          console.error("Error checking existing shares:", error);
+      try {
+        setDeckName(folder.name);
+        setDescription(folder.description || '');
+        
+        // Check if folder is already shared
+        const sharedDecks = await getSharedDecks();
+        const existingDeck = sharedDecks.find(deck => deck.folder_id === folder.id);
+        
+        if (existingDeck) {
+          setExistingShare(existingDeck);
+          setDeckName(existingDeck.name);
+          setDescription(existingDeck.description || '');
+          setIsPublic(existingDeck.is_public);
+          
+          const shareUrl = `${window.location.origin}/shared/${existingDeck.share_code}`;
+          setShareUrl(shareUrl);
+        } else {
+          setExistingShare(null);
+          setShareUrl('');
         }
-      };
-      
+      } catch (error) {
+        console.error("Error checking existing shares:", error);
+      }
+    };
+    
+    if (folder) {
       checkExistingShare();
     }
   }, [folder]);
@@ -105,16 +108,20 @@ export const ShareDeckDialog: React.FC<ShareDeckDialogProps> = ({
         );
       }
       
-      setExistingShare(result);
-      const shareUrl = `${window.location.origin}/shared/${result.share_code}`;
-      setShareUrl(shareUrl);
-      
-      toast({
-        title: "Success",
-        description: existingShare 
-          ? "Deck sharing settings updated successfully" 
-          : "Deck shared successfully",
-      });
+      if (result) {
+        setExistingShare(result);
+        const shareUrl = `${window.location.origin}/shared/${result.share_code}`;
+        setShareUrl(shareUrl);
+        
+        toast({
+          title: "Success",
+          description: existingShare 
+            ? "Deck sharing settings updated successfully" 
+            : "Deck shared successfully",
+        });
+      } else {
+        throw new Error("Failed to share deck - no result returned");
+      }
     } catch (error) {
       console.error("Error sharing deck:", error);
       toast({
