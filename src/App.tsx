@@ -22,7 +22,6 @@ import FeaturesPage from "./pages/FeaturesPage";
 import HelpCenter from "./pages/HelpCenter";
 import Tutorials from "./pages/Tutorials";
 import Community from "./pages/Community";
-import SharedDeck from "./pages/SharedDeck";
 import { Helmet } from "react-helmet";
 
 // JSON-LD structured data for better SEO
@@ -85,7 +84,6 @@ const App = () => {
               <Route path="/help-center" element={<HelpCenter />} />
               <Route path="/tutorials" element={<Tutorials />} />
               <Route path="/community" element={<Community />} />
-              <Route path="/shared/:code" element={<SharedDeck />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
