@@ -1,20 +1,16 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import Features from '@/components/Features';
 import FlashcardGenerator from '@/components/FlashcardGenerator';
-import GettingStarted from '@/components/GettingStarted';
-import Welcome from '@/components/Welcome';
-import { useWelcomeGuide } from '@/hooks/useWelcomeGuide';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, CheckCircle, LightbulbIcon, Twitter, MessageSquare, Mail, HelpCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, LightbulbIcon, Twitter, MessageSquare, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const Index = () => {
   const { toast } = useToast();
-  const { showWelcome, setShowWelcome, openWelcomeGuide } = useWelcomeGuide();
   
   const handleDemoRequest = () => {
     toast({
@@ -27,50 +23,15 @@ const Index = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      {/* Welcome Guide Popup */}
-      <Welcome open={showWelcome} onOpenChange={setShowWelcome} />
-      
-      {/* Help Button (fixed position) */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button size="icon" className="h-12 w-12 rounded-full shadow-lg">
-              <HelpCircle className="h-6 w-6" />
-              <span className="sr-only">Help</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64">
-            <div className="space-y-4">
-              <h4 className="font-medium">Need help?</h4>
-              <Button variant="outline" className="w-full justify-start" onClick={openWelcomeGuide}>
-                Show Getting Started Guide
-              </Button>
-              <Link to="/help-center">
-                <Button variant="outline" className="w-full justify-start">
-                  Visit Help Center
-                </Button>
-              </Link>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-      
       <main className="flex-grow">
         {/* Hero Section */}
         <Hero />
-        
-        {/* Getting Started Section for new users */}
-        <section className="py-16 px-4 bg-gray-50 dark:bg-gray-900" id="getting-started">
-          <div className="container mx-auto">
-            <GettingStarted />
-          </div>
-        </section>
         
         {/* Features Section */}
         <Features />
         
         {/* Generator Demo Section */}
-        <section className="py-24 px-4 relative overflow-hidden" id="generator-demo">
+        <section className="py-24 px-4 relative overflow-hidden">
           <div className="absolute inset-0 -z-10 overflow-hidden">
             <div className="absolute left-1/3 top-1/4 h-64 w-64 rounded-full bg-primary/10 filter blur-3xl opacity-60"></div>
             <div className="absolute right-1/3 bottom-1/3 h-72 w-72 rounded-full bg-accent/10 filter blur-3xl opacity-60"></div>
