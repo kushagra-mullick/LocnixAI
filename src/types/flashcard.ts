@@ -8,6 +8,7 @@ export interface Flashcard {
   dateCreated: Date;
   lastReviewed?: Date;
   nextReviewDate?: Date;
+  folderId?: string | null;
 }
 
 export interface FlashcardContextType {
@@ -20,4 +21,27 @@ export interface FlashcardContextType {
   getFlashcardsForStudy: (count?: number) => Flashcard[];
   rateFlashcard: (id: string, difficulty: 'easy' | 'medium' | 'hard') => void;
   isLoading: boolean;
+  selectedFolderId: string | null;
+  setSelectedFolderId: (id: string | null) => void;
+  moveFlashcards: (ids: string[], folderId: string | null) => void;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SharedDeck {
+  id: string;
+  name: string;
+  description?: string;
+  share_code: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  folder_id: string;
+  folders: Folder;
 }
