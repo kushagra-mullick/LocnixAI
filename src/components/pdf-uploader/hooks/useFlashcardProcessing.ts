@@ -19,7 +19,7 @@ export const useFlashcardProcessing = (
     model: string,
     useSimulationMode: boolean
   ) => {
-    if (!extractedText || extractedText.trim().length === 0) {
+    if (!extractedText) {
       toast({
         title: "No text to process",
         description: "Please upload a PDF first to extract text.",
@@ -29,67 +29,97 @@ export const useFlashcardProcessing = (
     }
     
     setIsProcessing(true);
-    setError(null);
+    setError(null); // Clear any previous errors
     
     // Start progress simulation
     startProgressSimulation();
     
     try {
-      // Always use API mode, never fallback to simulation
-      console.log(`Processing with ${provider} API using model ${model}`);
+      let flashcards = [];
       
-      // Always use the central API key
-      const effectiveApiKey = API_CONFIGURATION.OPENAI_API_KEY;
-      const flashcards = await generateFlashcardsWithAPI(provider, model, effectiveApiKey, extractedText);
-      
-      // Validate generated flashcards
-      if (!flashcards || !Array.isArray(flashcards) || flashcards.length === 0) {
-        throw new Error("No flashcards were generated from the API");
+      if (useSimulationMode) {
+        console.log("Using simulation mode for flashcard generation");
+        toast({
+          title: "Using Simulation Mode",
+          description: "Generating sample flashcards without AI API."
+        });
+        
+        flashcards = generateMockFlashcards(extractedText);
+      } else {
+        console.log(`Processing with ${provider} API using model ${model}`);
+        
+        // Always use the central API key
+        const effectiveApiKey = API_CONFIGURATION.OPENAI_API_KEY;
+        
+        // No need to check if API key exists anymore since it's hardcoded
+        flashcards = await generateFlashcardsWithAPI(provider, model, effectiveApiKey, extractedText);
       }
       
-      // Process and validate the flashcards
-      const validFlashcards = flashcards
-        .filter(card => card && typeof card === 'object' && card.front && card.back)
-        .map((card, index) => ({
+      if (Array.isArray(flashcards) && flashcards.length > 0) {
+        // Validate and fix any malformed flashcards
+        const validFlashcards = flashcards.filter(card => 
+          card && typeof card === 'object' && card.front && card.back
+        ).map((card, index) => ({
           id: card.id || `card-${Date.now()}-${index}`,
-          front: String(card.front).trim(),
-          back: String(card.back).trim(),
+          front: String(card.front),
+          back: String(card.back),
           category: card.category || "PDF Extract"
         }));
-      
-      if (validFlashcards.length === 0) {
-        throw new Error("No valid flashcards were generated");
+        
+        if (validFlashcards.length > 0) {
+          // Complete the progress bar
+          setProgress(100);
+          
+          // Short delay to show completed progress before updating UI
+          setTimeout(() => {
+            onExtractComplete(validFlashcards);
+            toast({
+              title: "Flashcards created",
+              description: `Successfully created ${validFlashcards.length} flashcards from your PDF.`
+            });
+          }, 500);
+          return;
+        } else {
+          throw new Error("Failed to create valid flashcards. The AI response was malformed.");
+        }
+      } else {
+        throw new Error("Failed to create flashcards. No cards were generated.");
       }
+    } catch (processError) {
+      console.error('Error processing PDF with LLM:', processError);
+      setError("Error processing: " + (processError instanceof Error ? processError.message : "Unknown error"));
       
-      // Complete the progress bar
-      setProgress(100);
-      
-      // Short delay to show completed progress before updating UI
-      setTimeout(() => {
-        onExtractComplete(validFlashcards);
+      // Only fall back to simulation mode if explicitly requested, not automatically
+      if (useSimulationMode) {
+        try {
+          console.log("Already in simulation mode, but had an error. Retrying simulation.");
+          const mockFlashcards = generateMockFlashcards(extractedText);
+          onExtractComplete(mockFlashcards);
+          toast({
+            title: "Simulation mode",
+            description: `Created ${mockFlashcards.length} sample flashcards.`,
+            variant: "default"
+          });
+        } catch (fallbackError) {
+          toast({
+            title: "Processing failed",
+            description: "Could not generate flashcards. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } else {
         toast({
-          title: "Flashcards created",
-          description: `Successfully created ${validFlashcards.length} flashcards from your PDF.`
+          title: "API processing failed",
+          description: "Failed to process with the AI API. Please try enabling simulation mode.",
+          variant: "destructive"
         });
-      }, 500);
-      
-    } catch (error) {
-      console.error('Error processing PDF with LLM:', error);
-      setError(error instanceof Error ? error.message : "Failed to generate flashcards");
-      
-      toast({
-        variant: "destructive",
-        title: "Processing failed",
-        description: "Could not generate flashcards. Please try again or contact support.",
-      });
-      
-      throw error; // Re-throw to handle in the component
+      }
     } finally {
       setIsProcessing(false);
     }
   };
   
-  // Simulate progress while API processing is happening
+  // Simulate progress while API or mock processing is happening
   const startProgressSimulation = () => {
     setProgress(0);
     const interval = setInterval(() => {
