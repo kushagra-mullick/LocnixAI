@@ -1,42 +1,63 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Flashcard, FlashcardContextType } from '../types/flashcard';
+import { sampleFlashcards } from '../data/sampleFlashcards';
 import { calculateNextReviewDate } from '../utils/flashcardUtils';
-import { filterFlashcardsForStudy } from '../utils/flashcardContextUtils';
+import { getFlashcards, addFlashcard as saveFlashcard, updateFlashcardById, deleteFlashcardById } from '../services/supabase';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useLocalFlashcards } from '../hooks/useLocalFlashcards';
-import * as flashcardService from '../services/flashcardService';
 
 const FlashcardContext = createContext<FlashcardContextType | undefined>(undefined);
 
 export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const { isAuthenticated, user } = useAuth();
-  
-  // Use the local flashcards hook for non-authenticated users
-  const localFlashcards = useLocalFlashcards(isAuthenticated);
 
-  // Load flashcards when auth state changes or selected folder changes
+  // Load flashcards when auth state changes
   useEffect(() => {
     const loadFlashcards = async () => {
       if (isAuthenticated && user) {
         try {
           setIsLoading(true);
-          const cards = await flashcardService.getFlashcards(selectedFolderId || undefined);
+          const cards = await getFlashcards();
           setFlashcards(cards);
         } catch (error) {
           console.error('Error loading flashcards from Supabase', error);
+          // Use empty array as fallback instead of sample flashcards
           setFlashcards([]);
         } finally {
           setIsLoading(false);
         }
       } else {
-        // For non-authenticated users, we use the local flashcards hook
-        setFlashcards(localFlashcards.flashcards);
-        setIsLoading(localFlashcards.isLoading);
+        // Use localStorage for non-authenticated users
+        const savedFlashcards = localStorage.getItem('flashcards');
+        if (savedFlashcards) {
+          try {
+            const parsedFlashcards = JSON.parse(savedFlashcards);
+            // If we have 0 flashcards in our sample data, we might want to clear localStorage
+            if (sampleFlashcards.length === 0) {
+              // Clear localStorage to ensure we start fresh
+              localStorage.removeItem('flashcards');
+              setFlashcards([]);
+            } else {
+              // Convert string dates back to Date objects
+              const processedFlashcards = parsedFlashcards.map((card: any) => ({
+                ...card,
+                dateCreated: new Date(card.dateCreated),
+                lastReviewed: card.lastReviewed ? new Date(card.lastReviewed) : undefined,
+                nextReviewDate: card.nextReviewDate ? new Date(card.nextReviewDate) : undefined
+              }));
+              setFlashcards(processedFlashcards);
+            }
+          } catch (error) {
+            console.error('Error parsing flashcards from localStorage', error);
+            setFlashcards([]); // Use empty array if error
+          }
+        } else {
+          setFlashcards([]); // Use empty array instead of sample data
+        }
+        setIsLoading(false);
       }
     };
 
@@ -60,29 +81,25 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         supabase.removeChannel(subscription);
       };
     }
-  }, [isAuthenticated, user, selectedFolderId, localFlashcards.flashcards, localFlashcards.isLoading]);
+  }, [isAuthenticated, user]);
 
-  // For non-authenticated users, we need to update the local flashcards hook when flashcards change
+  // Save flashcards to localStorage only when not authenticated
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
-      localFlashcards.setFlashcards(flashcards);
+      localStorage.setItem('flashcards', JSON.stringify(flashcards));
     }
-  }, [isAuthenticated, flashcards, isLoading]);
+  }, [flashcards, isAuthenticated, isLoading]);
 
   const addFlashcard = async (flashcard: Omit<Flashcard, 'id' | 'dateCreated'>) => {
     if (isAuthenticated) {
       try {
-        const newCard = await flashcardService.addFlashcard({
-          ...flashcard,
-          folderId: selectedFolderId
-        });
+        const newCard = await saveFlashcard(flashcard);
         setFlashcards(prev => [...prev, {
           ...newCard,
           id: newCard.id,
           dateCreated: new Date(newCard.date_created),
           lastReviewed: newCard.last_reviewed ? new Date(newCard.last_reviewed) : undefined,
-          nextReviewDate: newCard.next_review_date ? new Date(newCard.next_review_date) : undefined,
-          folderId: newCard.folder_id
+          nextReviewDate: newCard.next_review_date ? new Date(newCard.next_review_date) : undefined
         } as Flashcard]);
       } catch (error) {
         console.error('Error saving flashcard to Supabase', error);
@@ -92,8 +109,7 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const newFlashcard: Flashcard = {
         ...flashcard,
         id: `card-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        dateCreated: new Date(),
-        folderId: selectedFolderId
+        dateCreated: new Date()
       };
       setFlashcards(prev => [...prev, newFlashcard]);
     }
@@ -103,13 +119,10 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (isAuthenticated) {
       try {
         // Insert cards one by one (or use a batch operation if available)
-        const promises = newFlashcards.map(card => flashcardService.addFlashcard({
-          ...card,
-          folderId: selectedFolderId
-        }));
+        const promises = newFlashcards.map(card => saveFlashcard(card));
         await Promise.all(promises);
         // Reload all flashcards to ensure we have the latest data
-        const cards = await flashcardService.getFlashcards(selectedFolderId || undefined);
+        const cards = await getFlashcards();
         setFlashcards(cards);
       } catch (error) {
         console.error('Error saving multiple flashcards to Supabase', error);
@@ -119,8 +132,7 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const formattedFlashcards: Flashcard[] = newFlashcards.map((card, index) => ({
         ...card,
         id: `card-${Date.now()}-${index}`,
-        dateCreated: new Date(),
-        folderId: selectedFolderId
+        dateCreated: new Date()
       }));
       setFlashcards(prev => [...prev, ...formattedFlashcards]);
     }
@@ -129,7 +141,7 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const updateFlashcard = async (id: string, flashcard: Partial<Flashcard>) => {
     if (isAuthenticated) {
       try {
-        await flashcardService.updateFlashcardById(id, flashcard);
+        await updateFlashcardById(id, flashcard);
         setFlashcards(prev =>
           prev.map(card =>
             card.id === id ? { ...card, ...flashcard } : card
@@ -151,7 +163,7 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const deleteFlashcard = async (id: string) => {
     if (isAuthenticated) {
       try {
-        await flashcardService.deleteFlashcardById(id);
+        await deleteFlashcardById(id);
         setFlashcards(prev => prev.filter(card => card.id !== id));
       } catch (error) {
         console.error('Error deleting flashcard from Supabase', error);
@@ -178,7 +190,7 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     if (isAuthenticated) {
       try {
-        await flashcardService.updateFlashcardById(id, updatedCard);
+        await updateFlashcardById(id, updatedCard);
         setFlashcards(prev =>
           prev.map(card =>
             card.id === id ? { ...card, ...updatedCard } : card
@@ -197,37 +209,12 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const getFlashcardsForStudy = (count: number = 10, specificFolderId?: string | null): Flashcard[] => {
-    return filterFlashcardsForStudy(flashcards, count, specificFolderId, selectedFolderId);
-  };
-
-  const moveFlashcards = async (flashcardIds: string[], folderId: string | null) => {
-    if (isAuthenticated) {
-      try {
-        await flashcardService.moveFlashcardsToFolder(flashcardIds, folderId);
-        
-        // Update local state
-        setFlashcards(prev => {
-          const updatedCards = [...prev];
-          flashcardIds.forEach(id => {
-            const index = updatedCards.findIndex(card => card.id === id);
-            if (index !== -1) {
-              updatedCards[index] = { ...updatedCards[index], folderId };
-            }
-          });
-          return updatedCards;
-        });
-      } catch (error) {
-        console.error('Error moving flashcards in Supabase', error);
-      }
-    } else {
-      // Local storage fallback
-      setFlashcards(prev => {
-        return prev.map(card => 
-          flashcardIds.includes(card.id) ? { ...card, folderId } : card
-        );
-      });
-    }
+  const getFlashcardsForStudy = (): Flashcard[] => {
+    const now = new Date();
+    return flashcards.filter(card => {
+      if (!card.nextReviewDate) return true;
+      return card.nextReviewDate <= now;
+    });
   };
 
   return (
@@ -240,10 +227,7 @@ export const FlashcardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       getFlashcard,
       getFlashcardsForStudy,
       rateFlashcard,
-      isLoading,
-      selectedFolderId,
-      setSelectedFolderId,
-      moveFlashcards
+      isLoading
     }}>
       {children}
     </FlashcardContext.Provider>
