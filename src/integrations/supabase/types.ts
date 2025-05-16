@@ -16,6 +16,7 @@ export type Database = {
           created_at: string | null
           date_created: string | null
           difficulty: string | null
+          folder_id: string | null
           front: string
           id: string
           last_reviewed: string | null
@@ -28,6 +29,7 @@ export type Database = {
           created_at?: string | null
           date_created?: string | null
           difficulty?: string | null
+          folder_id?: string | null
           front: string
           id?: string
           last_reviewed?: string | null
@@ -40,10 +42,46 @@ export type Database = {
           created_at?: string | null
           date_created?: string | null
           difficulty?: string | null
+          folder_id?: string | null
           front?: string
           id?: string
           last_reviewed?: string | null
           next_review_date?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -68,6 +106,50 @@ export type Database = {
           name?: string | null
         }
         Relationships: []
+      }
+      shared_decks: {
+        Row: {
+          created_at: string
+          description: string | null
+          folder_id: string | null
+          id: string
+          is_public: boolean
+          name: string
+          share_code: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          is_public?: boolean
+          name: string
+          share_code: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          is_public?: boolean
+          name?: string
+          share_code?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_decks_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
